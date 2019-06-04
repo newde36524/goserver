@@ -61,7 +61,7 @@ func (RootHandle) OnMessage(conn *srv.Conn, p srv.Packet, next func()) {
 }
 
 //OnClose .
-func (RootHandle) OnClose(state srv.ConnState, next func()) {
+func (RootHandle) OnClose(state *srv.ConnState, next func()) {
 	logs.Infof("对方好像撤退了呦~~,连接状态:%s", state.String())
 }
 

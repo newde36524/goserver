@@ -5,7 +5,7 @@ type Handle interface {
 	ReadPacket(conn *Conn, next func()) Packet                     //读取包
 	OnConnection(conn *Conn, next func())                          //连接建立时处理
 	OnMessage(conn *Conn, p Packet, next func())                   //每次获取到消息时处理
-	OnClose(state ConnState, next func())                          //连接关闭时处理
+	OnClose(state *ConnState, next func())                         //连接关闭时处理
 	OnTimeOut(conn *Conn, code TimeOutState, next func())          //超时处理
 	OnPanic(conn *Conn, err error, next func())                    //Panic时处理
 	OnSendError(conn *Conn, packet Packet, err error, next func()) //连接数据发送异常 发送和接收的超时不应该超过其他packet的超时机制
@@ -23,11 +23,7 @@ type CoreHandle struct {
 //@h 连接处理程序接口
 //@return 返回实例
 func NewCoreHandle(h Handle) *CoreHandle {
-	return &CoreHandle{
-		handle: h,
-		prev:   nil,
-		next:   nil,
-	}
+	return &CoreHandle{handle: h}
 }
 
 //NextHandle 链式调用
@@ -58,24 +54,20 @@ func (h *CoreHandle) Link(next *CoreHandle) *CoreHandle {
 
 //First 获取传入节点链路中第一个节点
 func First(curr *CoreHandle) *CoreHandle {
-	for {
-		if curr.prev != nil {
-			curr = curr.prev
-		} else {
-			return curr
-		}
+	if curr.prev != nil {
+		curr = curr.prev
+		First(curr)
 	}
+	return curr
 }
 
 //Last 获取传入节点链路中最后一个节点
 func Last(curr *CoreHandle) *CoreHandle {
-	for {
-		if curr.next != nil {
-			curr = curr.next
-		} else {
-			return curr
-		}
+	if curr.next != nil {
+		curr = curr.next
+		Last(curr)
 	}
+	return curr
 }
 
 //Next 获取当前节点的下一个节点
@@ -99,7 +91,7 @@ func (h *CoreHandle) OnMessage(conn *Conn, p Packet, next func()) {
 }
 
 //OnClose .
-func (h *CoreHandle) OnClose(state ConnState, next func()) { h.handle.OnClose(state, next) }
+func (h *CoreHandle) OnClose(state *ConnState, next func()) { h.handle.OnClose(state, next) }
 
 //OnTimeOut .
 func (h *CoreHandle) OnTimeOut(conn *Conn, code TimeOutState, next func()) {

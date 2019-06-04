@@ -36,7 +36,9 @@ func (LogHandle) OnMessage(conn *srv.Conn, p srv.Packet, next func()) {
 }
 
 //OnClose .
-func (LogHandle) OnClose(state srv.ConnState, next func()) {
+func (LogHandle) OnClose(state *srv.ConnState, next func()) {
+	logs.Info(state)
+	state.Message = "日志模块修改当前信息"
 	next()
 }
 

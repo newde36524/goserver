@@ -27,7 +27,7 @@ type Packet struct {
 func main() {
 	defer func() {
 		if e := recover(); e != nil {
-			log.Println(e)
+			fmt.Println(e)
 		}
 	}()
 	for i := 10000; i < 10001; i++ {
@@ -75,8 +75,6 @@ func CreateTCPConn(serverIP string) (net.Conn, error) {
 
 //GetSerializePacket Packet包序列化
 func GetSerializePacket(packet Packet) []byte {
-	//  检验和的值要和  整包的长度一致，包括 校验和 字节
-	//  帧长 告诉服务端之后要接受多少个字节
 	willRecvLen := uint16(1 + 2 + 2 + 1 + len(packet.pData) + 1) // 帧长    msgid+命令类型+datainfo+校验和
 	slice := make([]byte, 0)
 	slice = append(slice, packet.head)                    //帧头		1
@@ -131,7 +129,7 @@ func GetChecksum(raw []byte) uint8 {
 
 		sum += int64(raw[i])
 	}
-	return ^uint8(sum) + 1 // 两个字节，16位，多了会变负数
+	return ^uint8(sum) + 1
 }
 
 //UInt16ToBytes .

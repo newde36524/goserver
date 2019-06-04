@@ -12,7 +12,7 @@ type Conn struct {
 	rwc      net.Conn        //tcp原始连接对象
 	option   ConnOption      //连接配置项
 	handle   *CoreHandle     //连接处理程序
-	state    ConnState       //连接状态
+	state    *ConnState      //连接状态
 	context  context.Context //全局上下文
 	recvChan <-chan Packet   //接收消息队列
 	sendChan chan<- Packet   //发送消息队列
@@ -27,7 +27,7 @@ func NewConn(rwc net.Conn, option ConnOption, h *CoreHandle) (result *Conn) {
 		rwc:    rwc,
 		option: option,
 		handle: h,
-		state: ConnState{
+		state: &ConnState{
 			ActiveTime: time.Now(),
 			RemoteAddr: rwc.RemoteAddr().String(),
 		},

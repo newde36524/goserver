@@ -1,11 +1,11 @@
 [Unit]
-Description=tcpserver daemon
+Description=goserver daemon
 After=network.target
 
 [Service]
 User=root
-WorkingDirectory=/home/tcpserver
-ExecStart=/home/tcpserver/cmd
+WorkingDirectory=/home/goserver
+ExecStart=/home/goserver/cmd
 Restart=always
 
 [Install]
