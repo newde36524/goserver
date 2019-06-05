@@ -34,15 +34,17 @@ func NewCoreHandle(h Handle) *CoreHandle {
 //这里采用闭包的形式，在框架的每一处调用接口方法的地方都创建一个闭包，并传入回调，把返回的方法再次传递给接口方法，
 //那么每个接口方法的实现通过调用传递进去的方法，能各自访问各自创建的闭包，从而实现管道调用之间不会互相影响，
 //至此完成管道的处理流程，关键是闭包的应用
-func (h *CoreHandle) NextHandle(callback func(*CoreHandle)) func() {
-	return func() {
+func (h *CoreHandle) NextHandle(callback func(*CoreHandle, func())) {
+	var next func()
+	next = func() {
 		if h.next != nil {
 			h = h.next
-			callback(h.prev)
+			callback(h.prev, next)
 		} else {
-			callback(h)
+			callback(h, next)
 		}
 	}
+	next()
 }
 
 //Link 为当前节点连接并返回下一个节点
@@ -54,9 +56,12 @@ func (h *CoreHandle) Link(next *CoreHandle) *CoreHandle {
 
 //First 获取传入节点链路中第一个节点
 func First(curr *CoreHandle) *CoreHandle {
-	if curr.prev != nil {
-		curr = curr.prev
-		First(curr)
+	for {
+		if curr.prev != nil {
+			curr = curr.prev
+		} else {
+			break
+		}
 	}
 	return curr
 }

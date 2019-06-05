@@ -45,9 +45,7 @@ func (c *Conn) fnProxy(fn func()) <-chan struct{} {
 			close(result)
 			if err := recover(); err != nil {
 				defer recover()
-				var next func()
-				next = c.handle.NextHandle(func(h *CoreHandle) { h.OnPanic(c, err.(error), next) })
-				next()
+				c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnPanic(c, err.(error), next) })
 				c.option.Logger.Error(string(debug.Stack()))
 			}
 		}()
@@ -62,9 +60,7 @@ func (c *Conn) safeFn(fn func()) {
 	defer func() {
 		if err := recover(); err != nil {
 			defer recover()
-			var next func()
-			next = c.handle.NextHandle(func(h *CoreHandle) { h.OnPanic(c, err.(error), next) })
-			next()
+			c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnPanic(c, err.(error), next) })
 			c.option.Logger.Error(string(debug.Stack()))
 		}
 	}()
@@ -81,9 +77,7 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 	c.rwc.SetReadDeadline(time.Now().Add(c.option.ReadDataTimeOut))
 	n, err = c.rwc.Read(b)
 	if err != nil {
-		var next func()
-		next = c.handle.NextHandle(func(h *CoreHandle) { h.OnRecvError(c, err, next) })
-		next()
+		c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnRecvError(c, err, next) })
 	}
 	return
 }
@@ -106,29 +100,21 @@ func (c *Conn) Raw() net.Conn {
 //run 固定处理流程
 func (c *Conn) run() {
 	c.sendChan = c.send(c.option.MaxSendChanCount)(c.heartBeat(c.option.SendTimeOut, func() {
-		var next func()
-		next = c.handle.NextHandle(func(h *CoreHandle) { h.OnTimeOut(c, SendTimeOutCode, next) })
-		next()
+		c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnTimeOut(c, SendTimeOutCode, next) })
 	}))
 	c.handChan = c.message(1)(c.heartBeat(c.option.HandTimeOut, func() {
-		var next func()
-		next = c.handle.NextHandle(func(h *CoreHandle) { h.OnTimeOut(c, HandTimeOutCode, next) })
-		next()
+		c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnTimeOut(c, HandTimeOutCode, next) })
 	}))
 	go c.safeFn(func() {
 		select {
 		case <-c.fnProxy(func() {
-			var next func()
-			next = c.handle.NextHandle(func(h *CoreHandle) { h.OnConnection(c, next) })
-			next()
+			c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnConnection(c, next) })
 		}):
 		case <-time.After(c.option.SendTimeOut):
 			c.option.Logger.Debugf("%s: Conn.run: OnConnection funtion invoke used time was too long", c.RemoteAddr())
 		}
 		c.recvChan = c.recv(c.option.MaxRecvChanCount)(c.heartBeat(c.option.RecvTimeOut, func() {
-			var next func()
-			next = c.handle.NextHandle(func(h *CoreHandle) { h.OnTimeOut(c, RecvTimeOutCode, next) })
-			next()
+			c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnTimeOut(c, RecvTimeOutCode, next) })
 		}))
 		defer func() {
 			close(c.handChan)
@@ -179,9 +165,7 @@ func (c *Conn) Close() {
 	c.rwc.SetWriteDeadline(time.Time{}) //set write timeout
 	c.state.Message = "conn is closed"
 	c.state.ComplateTime = time.Now()
-	var next func()
-	next = c.handle.NextHandle(func(h *CoreHandle) { h.OnClose(c.state, next) })
-	next()
+	c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnClose(c.state, next) })
 	c.cancel()
 	// runtime.GC()         //强制GC      待定可能有问题
 	// debug.FreeOSMemory() //强制释放内存 待定可能有问题
@@ -199,9 +183,8 @@ func (c *Conn) readPacket() <-chan Packet {
 			return
 		default:
 		}
-		var next func()
 		var p Packet
-		next = c.handle.NextHandle(func(h *CoreHandle) {
+		c.handle.NextHandle(func(h *CoreHandle, next func()) {
 			_p := h.ReadPacket(c, next)
 			//防止内部调用next()方法重复覆盖p的值
 			//当前机制保证在管道处理流程中,只要有一个handle的ReadPacket方法返回值不为nil时才有效,之后无效
@@ -212,7 +195,6 @@ func (c *Conn) readPacket() <-chan Packet {
 				p = _p
 			}
 		})
-		next()
 		result <- p
 	})
 	return result
@@ -284,9 +266,7 @@ func (c *Conn) send(maxSendChanCount int) func(<-chan struct{}) chan<- Packet {
 					c.rwc.SetWriteDeadline(time.Now().Add(c.option.WriteDataTimeOut))
 					_, err = c.rwc.Write(sendData)
 					if err != nil {
-						var next func()
-						next = c.handle.NextHandle(func(h *CoreHandle) { h.OnSendError(c, packet, err, next) })
-						next()
+						c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnSendError(c, packet, err, next) })
 					} else {
 						if c.isDebug {
 							c.option.Logger.Debugf("%s: Conn.send: send a packet", c.RemoteAddr())
@@ -322,9 +302,7 @@ func (c *Conn) message(maxHandNum int) func(<-chan struct{}) chan<- Packet {
 						c.option.Logger.Errorf("%s: Conn.message: hand packet chan was closed", c.RemoteAddr())
 						break
 					}
-					var next func()
-					next = c.handle.NextHandle(func(h *CoreHandle) { h.OnMessage(c, p, next) })
-					next()
+					c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnMessage(c, p, next) })
 					if c.isDebug {
 						c.option.Logger.Debugf("%s: Conn.message: hand a packet", c.RemoteAddr())
 					}

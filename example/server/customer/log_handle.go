@@ -28,6 +28,7 @@ func (LogHandle) OnConnection(conn *srv.Conn, next func()) {
 
 //OnMessage .
 func (LogHandle) OnMessage(conn *srv.Conn, p srv.Packet, next func()) {
+	logs.Infof("日志模块输出:  开始计时")
 	startTime := time.Now()
 	next()
 	endTime := time.Now()
