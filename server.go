@@ -59,6 +59,7 @@ func (s *Server) Binding() {
 				s.connOption.Logger.Error(debug.Stack())
 			}
 		}()
+		s.Use(&EmptyHandle{})
 		for {
 			conn, err := s.listener.Accept()
 			if err != nil {

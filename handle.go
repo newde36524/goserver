@@ -110,3 +110,32 @@ func (h *CoreHandle) OnRecvError(conn *Conn, err error, next func()) {
 func (h *CoreHandle) OnSendError(conn *Conn, p Packet, err error, next func()) {
 	h.handle.OnSendError(conn, p, err, next)
 }
+
+//EmptyHandle .
+type EmptyHandle struct {
+	handle Handle
+}
+
+//ReadPacket .
+func (h *EmptyHandle) ReadPacket(conn *Conn, next func()) Packet { return nil }
+
+//OnConnection .
+func (h *EmptyHandle) OnConnection(conn *Conn, next func()) {}
+
+//OnMessage .
+func (h *EmptyHandle) OnMessage(conn *Conn, p Packet, next func()) {}
+
+//OnClose .
+func (h *EmptyHandle) OnClose(state *ConnState, next func()) {}
+
+//OnTimeOut .
+func (h *EmptyHandle) OnTimeOut(conn *Conn, code TimeOutState, next func()) {}
+
+//OnPanic .
+func (h *EmptyHandle) OnPanic(conn *Conn, err error, next func()) {}
+
+//OnRecvError .
+func (h *EmptyHandle) OnRecvError(conn *Conn, err error, next func()) {}
+
+//OnSendError .
+func (h *EmptyHandle) OnSendError(conn *Conn, p Packet, err error, next func()) {}
