@@ -68,9 +68,12 @@ func First(curr *CoreHandle) *CoreHandle {
 
 //Last 获取传入节点链路中最后一个节点
 func Last(curr *CoreHandle) *CoreHandle {
-	if curr.next != nil {
-		curr = curr.next
-		Last(curr)
+	for {
+		if curr.next != nil {
+			curr = curr.next
+		} else {
+			break
+		}
 	}
 	return curr
 }
