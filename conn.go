@@ -19,7 +19,7 @@ type Conn struct {
 	handChan chan<- Packet   //处理消息队列
 	cancel   func()          //全局上下文取消函数
 	isDebug  bool            //是否打印框架内部debug信息
-	handles  []Handle
+	handles  []Handle        //暂时不用
 }
 
 //Next 使用下一个处理程序
