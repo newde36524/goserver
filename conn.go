@@ -32,6 +32,7 @@ func (c *Conn) Next(fn func(Handle, func())) {
 			fn(c.handles[index-1], result)
 		}
 	}
+	result()
 	return
 }
 
