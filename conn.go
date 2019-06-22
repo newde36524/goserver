@@ -44,7 +44,8 @@ func (c *Conn) Next(fn func(Handle, func())) {
 	next = func() {
 		defer func() {
 			if err := recover(); err != nil {
-				c.option.Logger.Error(err)
+				c.option.Logger.Errorf("%s: Conn.Next: pipeline excute error: %s", c.RemoteAddr(), err)
+				c.option.Logger.Error(string(debug.Stack()))
 			}
 		}()
 		if index < len(c.handles) {
