@@ -11,7 +11,6 @@ import (
 type Conn struct {
 	rwc      net.Conn        //tcp原始连接对象
 	option   ConnOption      //连接配置项
-	handle   *CoreHandle     //连接处理程序
 	state    *ConnState      //连接状态
 	context  context.Context //全局上下文
 	recvChan <-chan Packet   //接收消息队列
@@ -19,29 +18,15 @@ type Conn struct {
 	handChan chan<- Packet   //处理消息队列
 	cancel   func()          //全局上下文取消函数
 	isDebug  bool            //是否打印框架内部debug信息
-	handles  []Handle        //暂时不用
-}
-
-//Next 使用下一个处理程序
-func (c *Conn) Next(fn func(Handle, func())) {
-	index := 0
-	var result func()
-	result = func() {
-		if index < len(c.handles) {
-			index++
-			fn(c.handles[index-1], result)
-		}
-	}
-	result()
-	return
+	handles  []Handle        //连接处理程序管道
 }
 
 //NewConn returns a wrapper of raw conn
-func NewConn(rwc net.Conn, option ConnOption, h *CoreHandle) (result *Conn) {
+func NewConn(rwc net.Conn, option ConnOption, hs []Handle) (result *Conn) {
 	result = &Conn{
-		rwc:    rwc,
-		option: option,
-		handle: h,
+		rwc:     rwc,
+		option:  option,
+		handles: hs,
 		state: &ConnState{
 			ActiveTime: time.Now(),
 			RemoteAddr: rwc.RemoteAddr().String(),
@@ -49,6 +34,20 @@ func NewConn(rwc net.Conn, option ConnOption, h *CoreHandle) (result *Conn) {
 		isDebug: false,
 	}
 	result.context, result.cancel = context.WithCancel(context.Background())
+	return
+}
+
+//Next 使用下一个处理程序
+func (c *Conn) Next(fn func(Handle, func())) {
+	index := 0
+	var next func()
+	next = func() {
+		if index < len(c.handles) {
+			index++
+			fn(c.handles[index-1], next)
+		}
+	}
+	next()
 	return
 }
 
@@ -60,8 +59,7 @@ func (c *Conn) fnProxy(fn func()) <-chan struct{} {
 			close(result)
 			if err := recover(); err != nil {
 				defer recover()
-				c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnPanic(c, err.(error), next) })
-				// c.Next(func(h Handle, next func()) { h.OnPanic(c, err.(error), next) })
+				c.Next(func(h Handle, next func()) { h.OnPanic(c, err.(error), next) })
 				c.option.Logger.Error(string(debug.Stack()))
 			}
 		}()
@@ -76,8 +74,7 @@ func (c *Conn) safeFn(fn func()) {
 	defer func() {
 		if err := recover(); err != nil {
 			defer recover()
-			c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnPanic(c, err.(error), next) })
-			// c.Next(func(h Handle, next func()) { h.OnPanic(c, err.(error), next) })
+			c.Next(func(h Handle, next func()) { h.OnPanic(c, err.(error), next) })
 			c.option.Logger.Error(string(debug.Stack()))
 		}
 	}()
@@ -94,8 +91,7 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 	c.rwc.SetReadDeadline(time.Now().Add(c.option.ReadDataTimeOut))
 	n, err = c.rwc.Read(b)
 	if err != nil {
-		c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnRecvError(c, err, next) })
-		// c.Next(func(h Handle, next func()) { h.OnRecvError(c, err, next) })
+		c.Next(func(h Handle, next func()) { h.OnRecvError(c, err, next) })
 	}
 	return
 }
@@ -118,25 +114,21 @@ func (c *Conn) Raw() net.Conn {
 //run 固定处理流程
 func (c *Conn) run() {
 	c.sendChan = c.send(c.option.MaxSendChanCount)(c.heartBeat(c.option.SendTimeOut, func() {
-		c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnTimeOut(c, SendTimeOutCode, next) })
-		// c.Next(func(h Handle, next func()) { h.OnTimeOut(c, SendTimeOutCode, next) })
+		c.Next(func(h Handle, next func()) { h.OnTimeOut(c, SendTimeOutCode, next) })
 	}))
 	c.handChan = c.message(1)(c.heartBeat(c.option.HandTimeOut, func() {
-		c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnTimeOut(c, HandTimeOutCode, next) })
-		// c.Next(func(h Handle, next func()) { h.OnTimeOut(c, HandTimeOutCode, next) })
+		c.Next(func(h Handle, next func()) { h.OnTimeOut(c, HandTimeOutCode, next) })
 	}))
 	go c.safeFn(func() {
 		select {
 		case <-c.fnProxy(func() {
-			c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnConnection(c, next) })
-			// c.Next(func(h Handle, next func()) { h.OnConnection(c, next) })
+			c.Next(func(h Handle, next func()) { h.OnConnection(c, next) })
 		}):
 		case <-time.After(c.option.SendTimeOut):
 			c.option.Logger.Debugf("%s: Conn.run: OnConnection funtion invoke used time was too long", c.RemoteAddr())
 		}
 		c.recvChan = c.recv(c.option.MaxRecvChanCount)(c.heartBeat(c.option.RecvTimeOut, func() {
-			c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnTimeOut(c, RecvTimeOutCode, next) })
-			// c.Next(func(h Handle, next func()) { h.OnTimeOut(c, RecvTimeOutCode, next) })
+			c.Next(func(h Handle, next func()) { h.OnTimeOut(c, RecvTimeOutCode, next) })
 		}))
 		defer func() {
 			close(c.handChan)
@@ -187,8 +179,7 @@ func (c *Conn) Close() {
 	c.rwc.SetWriteDeadline(time.Time{}) //set write timeout
 	c.state.Message = "conn is closed"
 	c.state.ComplateTime = time.Now()
-	c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnClose(c.state, next) })
-	// c.Next(func(h Handle, next func()) { h.OnClose(c.state, next) })
+	c.Next(func(h Handle, next func()) { h.OnClose(c.state, next) })
 
 	c.cancel()
 	// runtime.GC()         //强制GC      待定可能有问题
@@ -208,7 +199,7 @@ func (c *Conn) readPacket() <-chan Packet {
 		default:
 		}
 		var p Packet
-		c.handle.NextHandle(func(h *CoreHandle, next func()) {
+		c.Next(func(h Handle, next func()) {
 			_p := h.ReadPacket(c, next)
 			//防止内部调用next()方法重复覆盖p的值
 			//当前机制保证在管道处理流程中,只要有一个handle的ReadPacket方法返回值不为nil时才有效,之后无效
@@ -219,17 +210,6 @@ func (c *Conn) readPacket() <-chan Packet {
 				p = _p
 			}
 		})
-		// c.Next(func(h Handle, next func()) {
-		// 	_p := h.ReadPacket(c, next)
-		// 	//防止内部调用next()方法重复覆盖p的值
-		// 	//当前机制保证在管道处理流程中,只要有一个handle的ReadPacket方法返回值不为nil时才有效,之后无效
-		// 	if _p != nil && p != nil {
-		// 		panic("禁止在管道链路中重复读取生成Packet,在管道中读取数据帧，只能有一个管道返回Packet，其余只能返回nil")
-		// 	}
-		// 	if _p != nil && p == nil {
-		// 		p = _p
-		// 	}
-		// })
 
 		result <- p
 	})
@@ -302,8 +282,7 @@ func (c *Conn) send(maxSendChanCount int) func(<-chan struct{}) chan<- Packet {
 					c.rwc.SetWriteDeadline(time.Now().Add(c.option.WriteDataTimeOut))
 					_, err = c.rwc.Write(sendData)
 					if err != nil {
-						c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnSendError(c, packet, err, next) })
-						// c.Next(func(h Handle, next func()) { h.OnSendError(c, packet, err, next) })
+						c.Next(func(h Handle, next func()) { h.OnSendError(c, packet, err, next) })
 					} else {
 						if c.isDebug {
 							c.option.Logger.Debugf("%s: Conn.send: send a packet", c.RemoteAddr())
@@ -339,8 +318,7 @@ func (c *Conn) message(maxHandNum int) func(<-chan struct{}) chan<- Packet {
 						c.option.Logger.Errorf("%s: Conn.message: hand packet chan was closed", c.RemoteAddr())
 						break
 					}
-					c.handle.NextHandle(func(h *CoreHandle, next func()) { h.OnMessage(c, p, next) })
-					// c.Next(func(h Handle, next func()) { h.OnMessage(c, p, next) })
+					c.Next(func(h Handle, next func()) { h.OnMessage(c, p, next) })
 					if c.isDebug {
 						c.option.Logger.Debugf("%s: Conn.message: hand a packet", c.RemoteAddr())
 					}

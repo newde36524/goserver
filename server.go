@@ -12,6 +12,7 @@ type Server struct {
 	connOption ConnOption   //连接配置项
 	pipe       *CoreHandle  //连接处理管道
 	isDebug    bool         //是否开始debug日志
+	handles    []Handle     //连接处理程序管道
 }
 
 //New new server
@@ -29,18 +30,12 @@ func New(network, addr string, connOption ConnOption) (srv *Server, err error) {
 		listener:   listener,
 		connOption: connOption,
 	}
-	// srv.Use(&DefaultTCPHandle{}) //默认占用第一个管道并调用下一个管道
 	return
 }
 
 //Use middleware
 func (s *Server) Use(h Handle) {
-	tree := NewCoreHandle(h)
-	if s.pipe != nil {
-		s.pipe = s.pipe.Link(tree)
-	} else {
-		s.pipe = tree
-	}
+	s.handles = append(s.handles, h)
 }
 
 //UseDebug 开启debug日志
@@ -67,7 +62,7 @@ func (s *Server) Binding() {
 				<-time.After(time.Second)
 				continue
 			}
-			c := NewConn(conn, s.connOption, First(s.pipe))
+			c := NewConn(conn, s.connOption, s.handles)
 			if s.isDebug {
 				c.UseDebug()
 			}

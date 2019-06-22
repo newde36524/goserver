@@ -7,13 +7,13 @@ import (
 
 //ConnState 连接状态
 type ConnState struct {
-	ActiveTime      time.Time //开始活动时间
-	ComplateTime    time.Time //结束活动时间
-	InnerErr        error     //异常信息
-	Message         string    //通知信息
-	RemoteAddr      string    //客户端地址
-	SendPacketCount int64     //发送包的数量
-	RecvPacketCount int64     //接收包的数量
+	ActiveTime      time.Time   //开始活动时间
+	ComplateTime    time.Time   //结束活动时间
+	InnerErr        error       //异常信息
+	Message         interface{} //通知信息
+	RemoteAddr      string      //客户端地址
+	SendPacketCount int64       //发送包的数量
+	RecvPacketCount int64       //接收包的数量
 }
 
 //String 格式化输出结构体信息
