@@ -42,6 +42,11 @@ func (c *Conn) Next(fn func(Handle, func())) {
 	index := 0
 	var next func()
 	next = func() {
+		defer func() {
+			if err := recover(); err != nil {
+				c.option.Logger.Error(err)
+			}
+		}()
 		if index < len(c.handles) {
 			index++
 			fn(c.handles[index-1], next)
@@ -112,6 +117,24 @@ func (c *Conn) Raw() net.Conn {
 }
 
 //run 固定处理流程
+/*
+工作协程：
+	1.数据发送协程
+	2.数据接收协程
+	3.数据处理协程
+	4.3个心跳协助协程
+	5.数据搬运代理协程(用于从接收信道接收数据并发送数据到处理信道)
+持久channel：
+	1.sendChan 发送信道
+	2.recvChan 接收信道
+	3.handChan 处理信道
+短期协程创建时机:
+	1.每次调用readPacket方法读取数据帧时
+	2.
+
+
+
+*/
 func (c *Conn) run() {
 	c.sendChan = c.send(c.option.MaxSendChanCount)(c.heartBeat(c.option.SendTimeOut, func() {
 		c.Next(func(h Handle, next func()) { h.OnTimeOut(c, SendTimeOutCode, next) })

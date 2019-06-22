@@ -51,6 +51,7 @@ func (RootHandle) OnConnection(conn *srv.Conn, next func()) {
 
 //OnMessage .
 func (RootHandle) OnMessage(conn *srv.Conn, p srv.Packet, next func()) {
+	// panic("测试异常")
 	logs.Infof("%s:我好像收到了不知名快递哦", conn.RemoteAddr())
 	sendP := &Packet{}
 	if p != nil {
