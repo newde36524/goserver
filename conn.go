@@ -296,7 +296,7 @@ func (c *Conn) send(maxSendChanCount int) func(<-chan struct{}) chan<- Packet {
 						c.option.Logger.Errorf("%s: goserver.Conn.send: the send packet is nil", c.RemoteAddr())
 						break
 					}
-					sendData, err := packet.Serialize(nil)
+					sendData, err := packet.Serialize()
 					if err != nil {
 						c.option.Logger.Error(err)
 					}
