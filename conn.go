@@ -340,7 +340,7 @@ func (c *Conn) message(maxHandNum int) func(<-chan struct{}) chan<- Packet {
 				case p, ok := <-result:
 					if !ok {
 						c.option.Logger.Errorf("%s: Conn.message: hand packet chan was closed", c.RemoteAddr())
-						break
+						return
 					}
 					c.Next(func(h Handle, next func()) { h.OnMessage(c, p, next) })
 					if c.isDebug {
