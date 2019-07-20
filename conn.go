@@ -193,7 +193,7 @@ func (c *Conn) run() {
 				return
 			case p, ok := <-c.recvChan:
 				if !ok {
-					c.option.Logger.Errorf("%s: goserver.Conn.run: recvChan is closed", c.RemoteAddr())
+					c.option.Logger.Debugf("%s: goserver.Conn.run: recvChan is closed", c.RemoteAddr())
 				}
 				select {
 				case <-c.context.Done():
@@ -334,7 +334,7 @@ func (c *Conn) message(maxHandNum int) func(<-chan struct{}) chan<- Packet {
 					return
 				case p, ok := <-result:
 					if !ok {
-						c.option.Logger.Errorf("%s: goserver.Conn.message: hand packet chan was closed", c.RemoteAddr())
+						c.option.Logger.Debugf("%s: goserver.Conn.message: hand packet chan was closed", c.RemoteAddr())
 						return
 					}
 					c.Next(func(h Handle, next func()) { h.OnMessage(c, p, next) })
