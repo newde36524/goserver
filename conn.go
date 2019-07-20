@@ -120,7 +120,9 @@ func (c *Conn) Raw() net.Conn {
 //Write send a packet to remote connection
 func (c *Conn) Write(packet Packet) {
 	if packet == nil {
-		c.option.Logger.Errorf("%s: goserver.Conn.Write: packet is nil,do nothing", c.RemoteAddr())
+		if c.isDebug {
+			c.option.Logger.Debugf("%s: goserver.Conn.Write: packet is nil,do nothing", c.RemoteAddr())
+		}
 		return
 	}
 	select {
@@ -171,7 +173,9 @@ func (c *Conn) run() {
 			c.Next(func(h Handle, next func()) { h.OnConnection(c, next) })
 		}):
 		case <-time.After(c.option.HandTimeOut):
-			c.option.Logger.Errorf("%s: goserver.Conn.run: the goserver.Handle.OnConnection function invoke time was too long", c.RemoteAddr())
+			if c.isDebug {
+				c.option.Logger.Debugf("%s: goserver.Conn.run: the goserver.Handle.OnConnection function invoke time was too long", c.RemoteAddr())
+			}
 		}
 		c.recvChan = c.recv(c.option.MaxRecvChanCount)(c.heartBeat(c.option.RecvTimeOut, func() {
 			c.Next(func(h Handle, next func()) { h.OnTimeOut(c, RecvTimeOutCode, next) })
@@ -193,7 +197,9 @@ func (c *Conn) run() {
 				return
 			case p, ok := <-c.recvChan:
 				if !ok {
-					c.option.Logger.Debugf("%s: goserver.Conn.run: recvChan is closed", c.RemoteAddr())
+					if c.isDebug {
+						c.option.Logger.Debugf("%s: goserver.Conn.run: recvChan is closed", c.RemoteAddr())
+					}
 				}
 				select {
 				case <-c.context.Done():
@@ -286,12 +292,14 @@ func (c *Conn) send(maxSendChanCount int) func(<-chan struct{}) chan<- Packet {
 					c.state.SendPacketCount++
 					if !ok {
 						if c.isDebug {
-							c.option.Logger.Errorf("%s: goserver.Conn.send: send packet chan was closed", c.RemoteAddr())
+							c.option.Logger.Debugf("%s: goserver.Conn.send: send packet chan was closed", c.RemoteAddr())
 						}
 						return
 					}
 					if packet == nil {
-						c.option.Logger.Errorf("%s: goserver.Conn.send: the send packet is nil", c.RemoteAddr())
+						if c.isDebug {
+							c.option.Logger.Debugf("%s: goserver.Conn.send: the send packet is nil", c.RemoteAddr())
+						}
 						break
 					}
 					sendData, err := packet.Serialize()
@@ -334,7 +342,9 @@ func (c *Conn) message(maxHandNum int) func(<-chan struct{}) chan<- Packet {
 					return
 				case p, ok := <-result:
 					if !ok {
-						c.option.Logger.Debugf("%s: goserver.Conn.message: hand packet chan was closed", c.RemoteAddr())
+						if c.isDebug {
+							c.option.Logger.Debugf("%s: goserver.Conn.message: hand packet chan was closed", c.RemoteAddr())
+						}
 						return
 					}
 					c.Next(func(h Handle, next func()) { h.OnMessage(c, p, next) })
