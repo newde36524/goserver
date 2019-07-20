@@ -133,12 +133,10 @@ func (c *Conn) Write(packet Packet) {
 //Close close connection
 func (c *Conn) Close() {
 	defer c.rwc.Close()
-	c.rwc.SetReadDeadline(time.Time{})  //set read timeout
-	c.rwc.SetWriteDeadline(time.Time{}) //set write timeout
+	c.rwc.SetDeadline(time.Now()) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
 	c.state.Message = "conn is closed"
 	c.state.ComplateTime = time.Now()
 	c.Next(func(h Handle, next func()) { h.OnClose(c.state, next) })
-
 	c.cancel()
 	// runtime.GC()         //强制GC      待定可能有问题
 	// debug.FreeOSMemory() //强制释放内存 待定可能有问题
