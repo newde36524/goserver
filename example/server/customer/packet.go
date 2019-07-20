@@ -1,8 +1,6 @@
 package customer
 
 import (
-	"context"
-
 	srv "github.com/newde36524/goserver"
 )
 
@@ -25,7 +23,7 @@ func (p *Packet) GetBuffer() []byte {
 }
 
 //Serialize .
-func (p *Packet) Serialize(ctx context.Context) ([]byte, error) {
+func (p *Packet) Serialize() ([]byte, error) {
 	//todo 数据帧的业务处理逻辑
 	return p.data, nil
 }
