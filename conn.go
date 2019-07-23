@@ -135,13 +135,13 @@ func (c *Conn) Write(packet Packet) {
 //Close close connection
 func (c *Conn) Close() {
 	defer func() {
-		c.cancel()
 		select {
 		case <-c.context.Done():
 			c.rwc.SetDeadline(time.Now()) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
 			c.rwc.Close()
 		}
 	}()
+	c.cancel()
 	c.state.Message = "conn is closed"
 	c.state.ComplateTime = time.Now()
 	c.Next(func(h Handle, next func()) { h.OnClose(c.state, next) })
