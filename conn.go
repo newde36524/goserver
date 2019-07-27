@@ -2,6 +2,7 @@ package goserver
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"runtime/debug"
 	"time"
@@ -44,8 +45,10 @@ func (c *Conn) Next(fn func(Handle, func())) {
 	next = func() {
 		defer func() {
 			if err := recover(); err != nil {
-				c.option.Logger.Errorf("%s: goserver.Conn.Next: pipeline excute error: %s", c.RemoteAddr(), err)
-				c.option.Logger.Error(string(debug.Stack()))
+				if c.option.Logger != nil {
+					c.option.Logger.Errorf("%s: goserver.Conn.Next: pipeline excute error: %s", c.RemoteAddr(), err)
+					c.option.Logger.Error(string(debug.Stack()))
+				}
 			}
 		}()
 		if index < len(c.handles) {
@@ -66,7 +69,9 @@ func (c *Conn) fnProxy(fn func()) <-chan struct{} {
 			if err := recover(); err != nil {
 				defer recover()
 				c.Next(func(h Handle, next func()) { h.OnPanic(c, err.(error), next) })
-				c.option.Logger.Error(string(debug.Stack()))
+				if c.option.Logger != nil {
+					c.option.Logger.Error(string(debug.Stack()))
+				}
 			}
 		}()
 		fn()
@@ -81,7 +86,10 @@ func (c *Conn) safeFn(fn func()) {
 		if err := recover(); err != nil {
 			defer recover()
 			c.Next(func(h Handle, next func()) { h.OnPanic(c, err.(error), next) })
-			c.option.Logger.Error(string(debug.Stack()))
+			if c.option.Logger != nil {
+				c.option.Logger.Error(err)
+				c.option.Logger.Error(string(debug.Stack()))
+			}
 		}
 	}()
 	fn()
@@ -90,6 +98,9 @@ func (c *Conn) safeFn(fn func()) {
 //UseDebug open inner debug message
 func (c *Conn) UseDebug() {
 	c.isDebug = true
+	if c.option.Logger == nil {
+		fmt.Println("goserver.Conn.UseDebug: c.option.Logger is nil")
+	}
 }
 
 //Read read a data frame from connection
@@ -120,7 +131,7 @@ func (c *Conn) Raw() net.Conn {
 //Write send a packet to remote connection
 func (c *Conn) Write(packet Packet) {
 	if packet == nil {
-		if c.isDebug {
+		if c.isDebug && c.option.Logger != nil {
 			c.option.Logger.Debugf("%s: goserver.Conn.Write: packet is nil,do nothing", c.RemoteAddr())
 		}
 		return
@@ -178,7 +189,7 @@ func (c *Conn) run() {
 			c.Next(func(h Handle, next func()) { h.OnConnection(c, next) })
 		}):
 		case <-time.After(c.option.HandTimeOut):
-			if c.isDebug {
+			if c.isDebug && c.option.Logger != nil {
 				c.option.Logger.Debugf("%s: goserver.Conn.run: the goserver.Handle.OnConnection function invoke time was too long", c.RemoteAddr())
 			}
 		}
@@ -187,11 +198,11 @@ func (c *Conn) run() {
 		}))
 		defer func() {
 			close(c.handChan)
-			if c.isDebug {
+			if c.isDebug && c.option.Logger != nil {
 				c.option.Logger.Debugf("%s: goserver.Conn.run: handChan is closed", c.RemoteAddr())
 			}
 			close(c.sendChan)
-			if c.isDebug {
+			if c.isDebug && c.option.Logger != nil {
 				c.option.Logger.Debugf("%s: goserver.Conn.run: sendChan is closed", c.RemoteAddr())
 				c.option.Logger.Debugf("%s: goserver.Conn.run: proxy goruntinue exit", c.RemoteAddr())
 			}
@@ -202,7 +213,7 @@ func (c *Conn) run() {
 				return
 			case p, ok := <-c.recvChan:
 				if !ok {
-					if c.isDebug {
+					if c.isDebug && c.option.Logger != nil {
 						c.option.Logger.Debugf("%s: goserver.Conn.run: recvChan is closed", c.RemoteAddr())
 					}
 				}
@@ -253,7 +264,7 @@ func (c *Conn) recv(maxRecvChanCount int) func(<-chan struct{}) <-chan Packet {
 		go c.safeFn(func() {
 			defer func() {
 				close(result)
-				if c.isDebug {
+				if c.isDebug && c.option.Logger != nil {
 					c.option.Logger.Debugf("%s: goserver.Conn.recv: recvChan is closed", c.RemoteAddr())
 					c.option.Logger.Debugf("%s: goserver.Conn.recv: recv goruntinue exit", c.RemoteAddr())
 				}
@@ -265,7 +276,7 @@ func (c *Conn) recv(maxRecvChanCount int) func(<-chan struct{}) <-chan Packet {
 					return
 				case result <- <-ch:
 					c.state.RecvPacketCount++
-					if c.isDebug {
+					if c.isDebug && c.option.Logger != nil {
 						c.option.Logger.Debugf("%s: goserver.Conn.recv: read a packet", c.RemoteAddr())
 					}
 					select {
@@ -285,7 +296,7 @@ func (c *Conn) send(maxSendChanCount int) func(<-chan struct{}) chan<- Packet {
 		result := make(chan Packet, maxSendChanCount)
 		go c.safeFn(func() {
 			defer func() {
-				if c.isDebug {
+				if c.isDebug && c.option.Logger != nil {
 					c.option.Logger.Debugf("%s: goserver.Conn.send: send goruntinue exit", c.RemoteAddr())
 				}
 			}()
@@ -296,27 +307,29 @@ func (c *Conn) send(maxSendChanCount int) func(<-chan struct{}) chan<- Packet {
 				case packet, ok := <-result:
 					c.state.SendPacketCount++
 					if !ok {
-						if c.isDebug {
+						if c.isDebug && c.option.Logger != nil {
 							c.option.Logger.Debugf("%s: goserver.Conn.send: send packet chan was closed", c.RemoteAddr())
 						}
 						return
 					}
 					if packet == nil {
-						if c.isDebug {
+						if c.isDebug && c.option.Logger != nil {
 							c.option.Logger.Debugf("%s: goserver.Conn.send: the send packet is nil", c.RemoteAddr())
 						}
 						break
 					}
 					sendData, err := packet.Serialize()
 					if err != nil {
-						c.option.Logger.Error(err)
+						if c.option.Logger != nil {
+							c.option.Logger.Error(err)
+						}
 					}
 					c.rwc.SetWriteDeadline(time.Now().Add(c.option.WriteDataTimeOut))
 					_, err = c.rwc.Write(sendData)
 					if err != nil {
 						c.Next(func(h Handle, next func()) { h.OnSendError(c, packet, err, next) })
 					} else {
-						if c.isDebug {
+						if c.isDebug && c.option.Logger != nil {
 							c.option.Logger.Debugf("%s: goserver.Conn.send: send a packet", c.RemoteAddr())
 						}
 					}
@@ -337,7 +350,7 @@ func (c *Conn) message(maxHandNum int) func(<-chan struct{}) chan<- Packet {
 		result := make(chan Packet, maxHandNum)
 		go c.safeFn(func() {
 			defer func() {
-				if c.isDebug {
+				if c.isDebug && c.option.Logger != nil {
 					c.option.Logger.Debugf("%s: goserver.Conn.message: hand goruntinue exit", c.RemoteAddr())
 				}
 			}()
@@ -347,13 +360,13 @@ func (c *Conn) message(maxHandNum int) func(<-chan struct{}) chan<- Packet {
 					return
 				case p, ok := <-result:
 					if !ok {
-						if c.isDebug {
+						if c.isDebug && c.option.Logger != nil {
 							c.option.Logger.Debugf("%s: goserver.Conn.message: hand packet chan was closed", c.RemoteAddr())
 						}
 						return
 					}
 					c.Next(func(h Handle, next func()) { h.OnMessage(c, p, next) })
-					if c.isDebug {
+					if c.isDebug && c.option.Logger != nil {
 						c.option.Logger.Debugf("%s: goserver.Conn.message: hand a packet", c.RemoteAddr())
 					}
 					select {
@@ -373,7 +386,7 @@ func (c *Conn) heartBeat(timeOut time.Duration, callback func()) <-chan struct{}
 	go func() {
 		defer func() {
 			close(result)
-			if c.isDebug {
+			if c.isDebug && c.option.Logger != nil {
 				c.option.Logger.Debugf("%s: goserver.Conn.heartBeat: heartBeat goruntinue exit", c.RemoteAddr())
 			}
 		}()
