@@ -10,7 +10,6 @@ import (
 type Server struct {
 	listener   net.Listener //TCP监听对象
 	connOption ConnOption   //连接配置项
-	pipe       *CoreHandle  //连接处理管道
 	isDebug    bool         //是否开始debug日志
 	handles    []Handle     //连接处理程序管道
 }
@@ -54,7 +53,6 @@ func (s *Server) Binding() {
 				s.connOption.Logger.Error(debug.Stack())
 			}
 		}()
-		s.Use(&EmptyHandle{})
 		for {
 			conn, err := s.listener.Accept()
 			if err != nil {
