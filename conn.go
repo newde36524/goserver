@@ -137,7 +137,7 @@ func (c *Conn) Close() {
 	defer func() {
 		select {
 		case <-c.context.Done():
-			c.rwc.SetDeadline(time.Now()) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
+			c.rwc.SetDeadline(time.Now().Add(1 * time.Second)) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
 			c.rwc.Close()
 		}
 	}()
