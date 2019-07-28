@@ -70,7 +70,8 @@ func (c *Conn) fnProxy(fn func()) <-chan struct{} {
 				defer recover()
 				c.Next(func(h Handle, next func()) { h.OnPanic(c, err.(error), next) })
 				if c.option.Logger != nil {
-					c.option.Logger.Error(string(debug.Stack()))
+					c.option.Logger.Errorf("goserver.Conn.fnProxy: %s", err)
+					c.option.Logger.Errorf("goserver.Conn.fnProxy: %s", string(debug.Stack()))
 				}
 			}
 		}()
@@ -87,8 +88,8 @@ func (c *Conn) safeFn(fn func()) {
 			defer recover()
 			c.Next(func(h Handle, next func()) { h.OnPanic(c, err.(error), next) })
 			if c.option.Logger != nil {
-				c.option.Logger.Error(err)
-				c.option.Logger.Error(string(debug.Stack()))
+				c.option.Logger.Errorf("goserver.Conn.safeFn: %s", err)
+				c.option.Logger.Errorf("goserver.Conn.safeFn: %s", string(debug.Stack()))
 			}
 		}
 	}()
@@ -150,12 +151,12 @@ func (c *Conn) Close() {
 		case <-c.context.Done():
 			c.rwc.SetDeadline(time.Now().Add(1 * time.Second)) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
 			c.rwc.Close()
+			c.Next(func(h Handle, next func()) { h.OnClose(c.state, next) })
 		}
 	}()
 	c.cancel()
 	c.state.Message = "conn is closed"
 	c.state.ComplateTime = time.Now()
-	c.Next(func(h Handle, next func()) { h.OnClose(c.state, next) })
 	// runtime.GC()         //强制GC      待定可能有问题
 	// debug.FreeOSMemory() //强制释放内存 待定可能有问题
 }
@@ -217,10 +218,12 @@ func (c *Conn) run() {
 						c.option.Logger.Debugf("%s: goserver.Conn.run: recvChan is closed", c.RemoteAddr())
 					}
 				}
-				select {
-				case <-c.context.Done():
-					return
-				case c.handChan <- p:
+				if p != nil {
+					select {
+					case <-c.context.Done():
+						return
+					case c.handChan <- p:
+					}
 				}
 			}
 		}
