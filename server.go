@@ -64,7 +64,7 @@ func (s *Server) Binding() {
 			if s.isDebug {
 				c.UseDebug()
 			}
-			c.run()
+			c.Run()
 		}
 	}()
 }

@@ -176,8 +176,8 @@ func (c *Conn) Close() {
 	1.每次调用readPacket方法读取数据帧时
 	2.
 */
-//run start run server and receive and handle and send packet
-func (c *Conn) run() {
+//Run start run server and receive and handle and send packet
+func (c *Conn) Run() {
 	c.sendChan = c.send(c.option.MaxSendChanCount)(c.heartBeat(c.option.SendTimeOut, func() {
 		c.Next(func(h Handle, next func()) { h.OnTimeOut(c, SendTimeOutCode, next) })
 	}))
