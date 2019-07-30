@@ -131,17 +131,24 @@ func (c *Conn) Raw() net.Conn {
 
 //Write send a packet to remote connection
 func (c *Conn) Write(packet Packet) {
-	if packet == nil {
-		if c.isDebug && c.option.Logger != nil {
-			c.option.Logger.Debugf("%s: goserver.Conn.Write: packet is nil,do nothing", c.RemoteAddr())
+	c.safeFn(func() {
+		if packet == nil {
+			if c.isDebug && c.option.Logger != nil {
+				c.option.Logger.Debugf("%s: goserver.Conn.Write: packet is nil,do nothing", c.RemoteAddr())
+			}
+			return
 		}
-		return
-	}
-	select {
-	case <-c.context.Done():
-		return
-	case c.sendChan <- packet:
-	}
+		select {
+		case <-c.context.Done():
+			return
+		default:
+		}
+		select {
+		case <-c.context.Done():
+			return
+		case c.sendChan <- packet:
+		}
+	})
 }
 
 //Close close connection
@@ -152,11 +159,39 @@ func (c *Conn) Close() {
 			c.rwc.SetDeadline(time.Now().Add(1 * time.Second)) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
 			c.rwc.Close()
 			c.Next(func(h Handle, next func()) { h.OnClose(c.state, next) })
+			// switch v := c.rwc.(type) {
+			// case *net.TCPConn:
+			// 	v.SetKeepAlive(false)
+			// 	f, err := v.File()
+			// 	if err != nil {
+			// 		c.option.Logger.Errorf("goserver.Conn.Close: %s", err)
+			// 	}
+			// 	syscall.Shutdown(syscall.Handle(f.Fd()), 0)
+			// case *net.UDPConn:
+			// 	f, err := v.File()
+			// 	if err != nil {
+			// 		c.option.Logger.Errorf("goserver.Conn.Close: %s", err)
+			// 	}
+			// 	syscall.Shutdown(syscall.Handle(f.Fd()), 0)
+			// case *net.UnixConn:
+			// 	f, err := v.File()
+			// 	if err != nil {
+			// 		c.option.Logger.Errorf("goserver.Conn.Close: %s", err)
+			// 	}
+			// 	syscall.Shutdown(syscall.Handle(f.Fd()), 0)
+			// case *net.IPConn:
+			// 	f, err := v.File()
+			// 	if err != nil {
+			// 		c.option.Logger.Errorf("goserver.Conn.Close: %s", err)
+			// 	}
+			// 	syscall.Shutdown(syscall.Handle(f.Fd()), 0)
+			// }
 		}
 	}()
 	c.cancel()
 	c.state.Message = "conn is closed"
 	c.state.ComplateTime = time.Now()
+
 	// runtime.GC()         //强制GC      待定可能有问题
 	// debug.FreeOSMemory() //强制释放内存 待定可能有问题
 }
