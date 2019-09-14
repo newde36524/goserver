@@ -4,9 +4,12 @@ import (
 	"time"
 
 	"github.com/issue9/logs"
+	"github.com/pkg/profile"
 
 	srv "github.com/newde36524/goserver"
 )
+
+var ()
 
 //LogHandle tcpserver使用示例,打印相关日志
 type LogHandle struct {
@@ -17,6 +20,8 @@ type LogHandle struct {
 
 //ReadPacket .
 func (LogHandle) ReadPacket(conn *srv.Conn, next func()) srv.Packet {
+	stopper := profile.Start(profile.CPUProfile, profile.ProfilePath("."))
+	defer stopper.Stop()
 	next()
 	return nil
 }
