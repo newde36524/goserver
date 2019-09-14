@@ -220,15 +220,7 @@ func (c *Conn) Run() {
 	sendHeartBeat := c.heartBeat(c.option.SendTimeOut, func() {
 		c.pipe(func(h Handle, next func()) { h.OnTimeOut(c, SendTimeOutCode, next) })
 	})
-	handHeartBeat := c.heartBeat(c.option.HandTimeOut, func() {
-		c.pipe(func(h Handle, next func()) { h.OnTimeOut(c, HandTimeOutCode, next) })
-	})
-	recvHeartBeat := c.heartBeat(c.option.RecvTimeOut, func() {
-		c.pipe(func(h Handle, next func()) { h.OnTimeOut(c, RecvTimeOutCode, next) })
-	})
-
 	c.sendChan = c.send(c.option.MaxSendChanCount, sendHeartBeat)
-	c.handChan = c.message(1, handHeartBeat)
 	go c.safeFn(func() {
 		select {
 		case <-c.fnProxy(func() {
@@ -239,6 +231,13 @@ func (c *Conn) Run() {
 				c.option.Logger.Debugf("%s: goserver.Conn.run: the goserver.Handle.OnConnection function invoke time was too long", c.RemoteAddr())
 			}
 		}
+		handHeartBeat := c.heartBeat(c.option.HandTimeOut, func() {
+			c.pipe(func(h Handle, next func()) { h.OnTimeOut(c, HandTimeOutCode, next) })
+		})
+		c.handChan = c.message(1, handHeartBeat)
+		recvHeartBeat := c.heartBeat(c.option.RecvTimeOut, func() {
+			c.pipe(func(h Handle, next func()) { h.OnTimeOut(c, RecvTimeOutCode, next) })
+		})
 		c.recvChan = c.recv(c.option.MaxRecvChanCount, recvHeartBeat)
 		defer func() {
 			close(c.handChan)
