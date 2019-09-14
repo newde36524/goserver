@@ -33,14 +33,14 @@ func main() {
 		ReadDataTimeOut:  1 * time.Minute, //接收数据超时时间
 		Logger:           logger,          //日志打印对象
 	}
-	server, err := srv.New("tcp", address, opt)
+	server, err := srv.TCPServer(opt)
 	if err != nil {
 		logs.Error(err)
 	}
 	server.Use(customer.LogHandle{})
 	server.Use(customer.RootHandle{})
 	server.UseDebug()
-	server.Binding()
+	server.Binding(address)
 	logs.Infof("服务器开始监听...  监听地址:%s", address)
 	fmt.Scanln()
 	<-context.Background().Done()

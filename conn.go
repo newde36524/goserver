@@ -38,8 +38,8 @@ func NewConn(rwc net.Conn, option ConnOption, hs []Handle) (result *Conn) {
 	return
 }
 
-//Next invoke next handle
-func (c *Conn) Next(fn func(Handle, func())) {
+//pipe pipeline provider
+func (c *Conn) pipe(fn func(Handle, func())) {
 	index := 0
 	var next func()
 	next = func() {
@@ -68,7 +68,7 @@ func (c *Conn) fnProxy(fn func()) <-chan struct{} {
 			close(result)
 			if err := recover(); err != nil {
 				defer recover()
-				c.Next(func(h Handle, next func()) { h.OnPanic(c, err.(error), next) })
+				c.pipe(func(h Handle, next func()) { h.OnPanic(c, err.(error), next) })
 				if c.option.Logger != nil {
 					c.option.Logger.Errorf("goserver.Conn.fnProxy: %s", err)
 					c.option.Logger.Errorf("goserver.Conn.fnProxy: %s", string(debug.Stack()))
@@ -86,7 +86,7 @@ func (c *Conn) safeFn(fn func()) {
 	defer func() {
 		if err := recover(); err != nil {
 			defer recover()
-			c.Next(func(h Handle, next func()) { h.OnPanic(c, err.(error), next) })
+			c.pipe(func(h Handle, next func()) { h.OnPanic(c, err.(error), next) })
 			if c.option.Logger != nil {
 				c.option.Logger.Errorf("goserver.Conn.safeFn: %s", err)
 				c.option.Logger.Errorf("goserver.Conn.safeFn: %s", string(debug.Stack()))
@@ -109,7 +109,7 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 	c.rwc.SetReadDeadline(time.Now().Add(c.option.ReadDataTimeOut))
 	n, err = c.rwc.Read(b)
 	if err != nil {
-		c.Next(func(h Handle, next func()) { h.OnRecvError(c, err, next) })
+		c.pipe(func(h Handle, next func()) { h.OnRecvError(c, err, next) })
 	}
 	return
 }
@@ -158,7 +158,7 @@ func (c *Conn) Close() {
 		case <-c.context.Done():
 			c.rwc.SetDeadline(time.Now().Add(1 * time.Second)) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
 			c.rwc.Close()
-			c.Next(func(h Handle, next func()) { h.OnClose(c.state, next) })
+			c.pipe(func(h Handle, next func()) { h.OnClose(c.state, next) })
 			// switch v := c.rwc.(type) {
 			// case *net.TCPConn:
 			// 	v.SetKeepAlive(false)
@@ -210,28 +210,36 @@ func (c *Conn) Close() {
 短期协程创建时机:
 	1.每次调用readPacket方法读取数据帧时
 	2.
+框架现存的问题:
+	1.单链接基础协程数太多,单机最大负载量受影响 20190914
+	2.消息前后的关联处理不方便 20190914
+	3.代码比较粗糙 20190914
 */
 //Run start run server and receive and handle and send packet
 func (c *Conn) Run() {
-	c.sendChan = c.send(c.option.MaxSendChanCount)(c.heartBeat(c.option.SendTimeOut, func() {
-		c.Next(func(h Handle, next func()) { h.OnTimeOut(c, SendTimeOutCode, next) })
-	}))
-	c.handChan = c.message(1)(c.heartBeat(c.option.HandTimeOut, func() {
-		c.Next(func(h Handle, next func()) { h.OnTimeOut(c, HandTimeOutCode, next) })
-	}))
+	sendHeartBeat := c.heartBeat(c.option.SendTimeOut, func() {
+		c.pipe(func(h Handle, next func()) { h.OnTimeOut(c, SendTimeOutCode, next) })
+	})
+	handHeartBeat := c.heartBeat(c.option.HandTimeOut, func() {
+		c.pipe(func(h Handle, next func()) { h.OnTimeOut(c, HandTimeOutCode, next) })
+	})
+	recvHeartBeat := c.heartBeat(c.option.RecvTimeOut, func() {
+		c.pipe(func(h Handle, next func()) { h.OnTimeOut(c, RecvTimeOutCode, next) })
+	})
+
+	c.sendChan = c.send(c.option.MaxSendChanCount, sendHeartBeat)
+	c.handChan = c.message(1, handHeartBeat)
 	go c.safeFn(func() {
 		select {
 		case <-c.fnProxy(func() {
-			c.Next(func(h Handle, next func()) { h.OnConnection(c, next) })
+			c.pipe(func(h Handle, next func()) { h.OnConnection(c, next) })
 		}):
 		case <-time.After(c.option.HandTimeOut):
 			if c.isDebug && c.option.Logger != nil {
 				c.option.Logger.Debugf("%s: goserver.Conn.run: the goserver.Handle.OnConnection function invoke time was too long", c.RemoteAddr())
 			}
 		}
-		c.recvChan = c.recv(c.option.MaxRecvChanCount)(c.heartBeat(c.option.RecvTimeOut, func() {
-			c.Next(func(h Handle, next func()) { h.OnTimeOut(c, RecvTimeOutCode, next) })
-		}))
+		c.recvChan = c.recv(c.option.MaxRecvChanCount, recvHeartBeat)
 		defer func() {
 			close(c.handChan)
 			if c.isDebug && c.option.Logger != nil {
@@ -278,15 +286,15 @@ func (c *Conn) readPacket() <-chan Packet {
 		default:
 		}
 		var p Packet
-		c.Next(func(h Handle, next func()) {
-			_p := h.ReadPacket(c, next)
+		c.pipe(func(h Handle, next func()) {
+			temp := h.ReadPacket(c, next)
 			//防止内部调用next()方法重复覆盖p的值
 			//当前机制保证在管道处理流程中,只要有一个handle的ReadPacket方法返回值不为nil时才有效,之后无效
-			if _p != nil && p != nil {
+			if temp != nil && p != nil {
 				panic("goserver.Conn.readPacket: 禁止在管道链路中重复读取生成Packet,在管道中读取数据帧,只能有一个管道返回Packet,其余只能返回nil")
 			}
-			if _p != nil && p == nil {
-				p = _p
+			if temp != nil && p == nil {
+				p = temp
 			}
 		})
 
@@ -296,126 +304,120 @@ func (c *Conn) readPacket() <-chan Packet {
 }
 
 //recv create a receive only packet channel
-func (c *Conn) recv(maxRecvChanCount int) func(<-chan struct{}) <-chan Packet {
-	return func(heartBeat <-chan struct{}) <-chan Packet {
-		result := make(chan Packet, maxRecvChanCount)
-		go c.safeFn(func() {
-			defer func() {
-				close(result)
+func (c *Conn) recv(maxRecvChanCount int, heartBeat <-chan struct{}) <-chan Packet {
+	result := make(chan Packet, maxRecvChanCount)
+	go c.safeFn(func() {
+		defer func() {
+			close(result)
+			if c.isDebug && c.option.Logger != nil {
+				c.option.Logger.Debugf("%s: goserver.Conn.recv: recvChan is closed", c.RemoteAddr())
+				c.option.Logger.Debugf("%s: goserver.Conn.recv: recv goruntinue exit", c.RemoteAddr())
+			}
+		}()
+		for c.rwc != nil {
+			ch := c.readPacket()
+			select {
+			case <-c.context.Done():
+				return
+			case result <- <-ch:
+				c.state.RecvPacketCount++
 				if c.isDebug && c.option.Logger != nil {
-					c.option.Logger.Debugf("%s: goserver.Conn.recv: recvChan is closed", c.RemoteAddr())
-					c.option.Logger.Debugf("%s: goserver.Conn.recv: recv goruntinue exit", c.RemoteAddr())
+					c.option.Logger.Debugf("%s: goserver.Conn.recv: read a packet", c.RemoteAddr())
 				}
-			}()
-			for c.rwc != nil {
-				ch := c.readPacket()
 				select {
-				case <-c.context.Done():
-					return
-				case result <- <-ch:
-					c.state.RecvPacketCount++
-					if c.isDebug && c.option.Logger != nil {
-						c.option.Logger.Debugf("%s: goserver.Conn.recv: read a packet", c.RemoteAddr())
-					}
-					select {
-					case <-heartBeat:
-					default:
-					}
+				case <-heartBeat:
+				default:
 				}
 			}
-		})
-		return result
-	}
+		}
+	})
+	return result
 }
 
 //send create a send only packet channel
-func (c *Conn) send(maxSendChanCount int) func(<-chan struct{}) chan<- Packet {
-	return func(heartBeat <-chan struct{}) chan<- Packet {
-		result := make(chan Packet, maxSendChanCount)
-		go c.safeFn(func() {
-			defer func() {
-				if c.isDebug && c.option.Logger != nil {
-					c.option.Logger.Debugf("%s: goserver.Conn.send: send goruntinue exit", c.RemoteAddr())
-				}
-			}()
-			for c.rwc != nil {
-				select {
-				case <-c.context.Done():
+func (c *Conn) send(maxSendChanCount int, heartBeat <-chan struct{}) chan<- Packet {
+	result := make(chan Packet, maxSendChanCount)
+	go c.safeFn(func() {
+		defer func() {
+			if c.isDebug && c.option.Logger != nil {
+				c.option.Logger.Debugf("%s: goserver.Conn.send: send goruntinue exit", c.RemoteAddr())
+			}
+		}()
+		for c.rwc != nil {
+			select {
+			case <-c.context.Done():
+				return
+			case packet, ok := <-result:
+				c.state.SendPacketCount++
+				if !ok {
+					if c.isDebug && c.option.Logger != nil {
+						c.option.Logger.Debugf("%s: goserver.Conn.send: send packet chan was closed", c.RemoteAddr())
+					}
 					return
-				case packet, ok := <-result:
-					c.state.SendPacketCount++
-					if !ok {
-						if c.isDebug && c.option.Logger != nil {
-							c.option.Logger.Debugf("%s: goserver.Conn.send: send packet chan was closed", c.RemoteAddr())
-						}
-						return
+				}
+				if packet == nil {
+					if c.isDebug && c.option.Logger != nil {
+						c.option.Logger.Debugf("%s: goserver.Conn.send: the send packet is nil", c.RemoteAddr())
 					}
-					if packet == nil {
-						if c.isDebug && c.option.Logger != nil {
-							c.option.Logger.Debugf("%s: goserver.Conn.send: the send packet is nil", c.RemoteAddr())
-						}
-						break
+					break
+				}
+				sendData, err := packet.Serialize()
+				if err != nil {
+					if c.option.Logger != nil {
+						c.option.Logger.Error(err)
 					}
-					sendData, err := packet.Serialize()
-					if err != nil {
-						if c.option.Logger != nil {
-							c.option.Logger.Error(err)
-						}
+				}
+				c.rwc.SetWriteDeadline(time.Now().Add(c.option.WriteDataTimeOut))
+				_, err = c.rwc.Write(sendData)
+				if err != nil {
+					c.pipe(func(h Handle, next func()) { h.OnSendError(c, packet, err, next) })
+				} else {
+					if c.isDebug && c.option.Logger != nil {
+						c.option.Logger.Debugf("%s: goserver.Conn.send: send a packet", c.RemoteAddr())
 					}
-					c.rwc.SetWriteDeadline(time.Now().Add(c.option.WriteDataTimeOut))
-					_, err = c.rwc.Write(sendData)
-					if err != nil {
-						c.Next(func(h Handle, next func()) { h.OnSendError(c, packet, err, next) })
-					} else {
-						if c.isDebug && c.option.Logger != nil {
-							c.option.Logger.Debugf("%s: goserver.Conn.send: send a packet", c.RemoteAddr())
-						}
-					}
-					select {
-					case <-heartBeat:
-					default:
-					}
+				}
+				select {
+				case <-heartBeat:
+				default:
 				}
 			}
-		})
-		return result
-	}
+		}
+	})
+	return result
 }
 
 //message create a send only hand packet channel
-func (c *Conn) message(maxHandNum int) func(<-chan struct{}) chan<- Packet {
-	return func(heartBeat <-chan struct{}) chan<- Packet {
-		result := make(chan Packet, maxHandNum)
-		go c.safeFn(func() {
-			defer func() {
-				if c.isDebug && c.option.Logger != nil {
-					c.option.Logger.Debugf("%s: goserver.Conn.message: hand goruntinue exit", c.RemoteAddr())
-				}
-			}()
-			for {
-				select {
-				case <-c.context.Done():
-					return
-				case p, ok := <-result:
-					if !ok {
-						if c.isDebug && c.option.Logger != nil {
-							c.option.Logger.Debugf("%s: goserver.Conn.message: hand packet chan was closed", c.RemoteAddr())
-						}
-						return
-					}
-					c.Next(func(h Handle, next func()) { h.OnMessage(c, p, next) })
+func (c *Conn) message(maxHandNum int, heartBeat <-chan struct{}) chan<- Packet {
+	result := make(chan Packet, maxHandNum)
+	go c.safeFn(func() {
+		defer func() {
+			if c.isDebug && c.option.Logger != nil {
+				c.option.Logger.Debugf("%s: goserver.Conn.message: hand goruntinue exit", c.RemoteAddr())
+			}
+		}()
+		for {
+			select {
+			case <-c.context.Done():
+				return
+			case p, ok := <-result:
+				if !ok {
 					if c.isDebug && c.option.Logger != nil {
-						c.option.Logger.Debugf("%s: goserver.Conn.message: hand a packet", c.RemoteAddr())
+						c.option.Logger.Debugf("%s: goserver.Conn.message: hand packet chan was closed", c.RemoteAddr())
 					}
-					select {
-					case <-heartBeat:
-					default:
-					}
+					return
+				}
+				c.pipe(func(h Handle, next func()) { h.OnMessage(c, p, next) })
+				if c.isDebug && c.option.Logger != nil {
+					c.option.Logger.Debugf("%s: goserver.Conn.message: hand a packet", c.RemoteAddr())
+				}
+				select {
+				case <-heartBeat:
+				default:
 				}
 			}
-		})
-		return result
-	}
+		}
+	})
+	return result
 }
 
 //heartBeat create a receive only heartBeat checking chan

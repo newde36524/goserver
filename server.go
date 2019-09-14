@@ -6,28 +6,29 @@ import (
 	"time"
 )
 
+//TCPServer create tcp server
+func TCPServer(opt ConnOption) (*Server, error) {
+	return New("tcp", opt)
+}
+
 //Server tcp服务器
 type Server struct {
-	listener   net.Listener //TCP监听对象
-	connOption ConnOption   //连接配置项
-	isDebug    bool         //是否开始debug日志
-	handles    []Handle     //连接处理程序管道
+	isDebug bool       //是否开始debug日志
+	handles []Handle   //连接处理程序管道
+	network string     //网络
+	opt     ConnOption //连接配置项
 }
 
 //New new server
 //@network network 类型，具体参照ListenUDP ListenTCP等
 //@addr local address
 //@connOption connection options
-func New(network, addr string, connOption ConnOption) (srv *Server, err error) {
+func New(network string, opt ConnOption) (srv *Server, err error) {
 	// 根据服务器开启多CPU功能
 	// runtime.GOMAXPROCS(runtime.NumCPU())
-	listener, err := net.Listen(network, addr)
-	if err != nil {
-		return
-	}
 	srv = &Server{
-		listener:   listener,
-		connOption: connOption,
+		network: network,
+		opt:     opt,
 	}
 	return
 }
@@ -43,24 +44,28 @@ func (s *Server) UseDebug() {
 }
 
 //Binding start server
-func (s *Server) Binding() {
+func (s *Server) Binding(address string) {
+	listener, err := net.Listen(s.network, address)
+	if err != nil {
+		return
+	}
 	go func() {
-		defer s.listener.Close()
+		defer listener.Close()
 		defer func() {
 			defer recover()
 			if err := recover(); err != nil {
-				s.connOption.Logger.Error(err)
-				s.connOption.Logger.Error(debug.Stack())
+				s.opt.Logger.Error(err)
+				s.opt.Logger.Error(debug.Stack())
 			}
 		}()
 		for {
-			conn, err := s.listener.Accept()
+			conn, err := listener.Accept()
 			if err != nil {
-				s.connOption.Logger.Error(err)
+				s.opt.Logger.Error(err)
 				<-time.After(time.Second)
 				continue
 			}
-			c := NewConn(conn, s.connOption, s.handles)
+			c := NewConn(conn, s.opt, s.handles)
 			if s.isDebug {
 				c.UseDebug()
 			}

@@ -7,23 +7,23 @@ type Packet interface {
 	Serialize() ([]byte, error) // 获取服务端解析后的数据帧
 }
 
-//BasePacket .
-type BasePacket struct {
+//P .
+type P struct {
 	Packet
 	data []byte
 }
 
 //SetBuffer .
-func (p *BasePacket) SetBuffer(frame []byte) {
+func (p *P) SetBuffer(frame []byte) {
 	p.data = frame
 }
 
 //GetBuffer .
-func (p *BasePacket) GetBuffer() []byte {
+func (p *P) GetBuffer() []byte {
 	return p.data
 }
 
 //Serialize .
-func (p *BasePacket) Serialize() ([]byte, error) {
+func (p *P) Serialize() ([]byte, error) {
 	return p.data, nil
 }
