@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"time"
 
 	srv "github.com/newde36524/goserver"
@@ -18,6 +19,12 @@ func init() {
 		<-time.After(10 * time.Second)
 		return
 	}
+	go func() {
+		for {
+			fmt.Printf("当前协程数:%d\n", runtime.NumGoroutine())
+			time.Sleep(time.Second)
+		}
+	}()
 }
 
 func main() {

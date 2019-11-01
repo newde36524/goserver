@@ -297,7 +297,11 @@ func (c *Conn) readPacket() <-chan Packet {
 			}
 		})
 
-		result <- p
+		select {
+		case result <- p:
+		case <-c.context.Done():
+			return
+		}
 	})
 	return result
 }
