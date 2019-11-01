@@ -314,18 +314,26 @@ func (c *Conn) recv(maxRecvChanCount int, heartBeat <-chan struct{}) <-chan Pack
 			}
 		}()
 		for c.rwc != nil {
-			ch := c.readPacket()
+			pchan := c.readPacket()
 			select {
 			case <-c.context.Done():
 				return
-			case result <- <-ch:
-				c.state.RecvPacketCount++
-				if c.isDebug && c.option.Logger != nil {
-					c.option.Logger.Debugf("%s: goserver.Conn.recv: read a packet", c.RemoteAddr())
+			case p, ok := <-pchan:
+				if !ok {
+					c.option.Logger.Debugf("%s: goserver.Conn.recv: packet channel prematurely closed", c.RemoteAddr())
 				}
 				select {
-				case <-heartBeat:
-				default:
+				case <-c.context.Done():
+					return
+				case result <- p:
+					c.state.RecvPacketCount++
+					if c.isDebug && c.option.Logger != nil {
+						c.option.Logger.Debugf("%s: goserver.Conn.recv: read a packet", c.RemoteAddr())
+					}
+					select {
+					case <-heartBeat:
+					default:
+					}
 				}
 			}
 		}
