@@ -2,14 +2,13 @@ package goserver
 
 //Handle 处理类
 type Handle interface {
-	ReadPacket(conn *Conn, next func()) Packet                     //读取包
-	OnConnection(conn *Conn, next func())                          //连接建立时处理
-	OnMessage(conn *Conn, p Packet, next func())                   //每次获取到消息时处理
-	OnClose(state *ConnState, next func())                         //连接关闭时处理
-	OnTimeOut(conn *Conn, code TimeOutState, next func())          //超时处理
-	OnPanic(conn *Conn, err error, next func())                    //Panic时处理
-	OnSendError(conn *Conn, packet Packet, err error, next func()) //连接数据发送异常 发送和接收的超时不应该超过其他packet的超时机制
-	OnRecvError(conn *Conn, err error, next func())                //连接数据接收异常
+	ReadPacket(conn *Conn, next func()) Packet      //读取包
+	OnConnection(conn *Conn, next func())           //连接建立时处理
+	OnMessage(conn *Conn, p Packet, next func())    //每次获取到消息时处理
+	OnRecvError(conn *Conn, err error, next func()) //连接数据接收异常
+	OnRecvTimeOut(conn *Conn, next func())          //超时处理
+	OnClose(state *ConnState, next func())          //连接关闭时处理
+	OnPanic(conn *Conn, err error, next func())     //Panic时处理
 }
 
 //CoreHandle 包装接口实现类
@@ -101,9 +100,9 @@ func (h *CoreHandle) OnMessage(conn *Conn, p Packet, next func()) {
 //OnClose .
 func (h *CoreHandle) OnClose(state *ConnState, next func()) { h.handle.OnClose(state, next) }
 
-//OnTimeOut .
-func (h *CoreHandle) OnTimeOut(conn *Conn, code TimeOutState, next func()) {
-	h.handle.OnTimeOut(conn, code, next)
+//OnRecvTimeOut .
+func (h *CoreHandle) OnRecvTimeOut(conn *Conn, next func()) {
+	h.handle.OnRecvTimeOut(conn, next)
 }
 
 //OnPanic .
@@ -112,11 +111,6 @@ func (h *CoreHandle) OnPanic(conn *Conn, err error, next func()) { h.handle.OnPa
 //OnRecvError .
 func (h *CoreHandle) OnRecvError(conn *Conn, err error, next func()) {
 	h.handle.OnRecvError(conn, err, next)
-}
-
-//OnSendError .
-func (h *CoreHandle) OnSendError(conn *Conn, p Packet, err error, next func()) {
-	h.handle.OnSendError(conn, p, err, next)
 }
 
 //EmptyHandle .
@@ -136,14 +130,11 @@ func (h *EmptyHandle) OnMessage(conn *Conn, p Packet, next func()) {}
 //OnClose .
 func (h *EmptyHandle) OnClose(state *ConnState, next func()) {}
 
-//OnTimeOut .
-func (h *EmptyHandle) OnTimeOut(conn *Conn, code TimeOutState, next func()) {}
+//OnRecvTimeOut .
+func (h *EmptyHandle) OnRecvTimeOut(conn *Conn, next func()) {}
 
 //OnPanic .
 func (h *EmptyHandle) OnPanic(conn *Conn, err error, next func()) {}
 
 //OnRecvError .
 func (h *EmptyHandle) OnRecvError(conn *Conn, err error, next func()) {}
-
-//OnSendError .
-func (h *EmptyHandle) OnSendError(conn *Conn, p Packet, err error, next func()) {}

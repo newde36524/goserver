@@ -66,19 +66,14 @@ func (RootHandle) OnClose(state *srv.ConnState, next func()) {
 	logs.Infof("对方好像撤退了呦~~,连接状态:%s", state.String())
 }
 
-//OnTimeOut .
-func (RootHandle) OnTimeOut(conn *srv.Conn, code srv.TimeOutState, next func()) {
-	logs.Infof("%s: 对方好像在做一些灰暗的事情呢~~,超时类型:%d", conn.RemoteAddr(), code)
+//OnRecvTimeOut .
+func (RootHandle) OnRecvTimeOut(conn *srv.Conn, next func()) {
+	logs.Infof("%s: 对方好像在做一些灰暗的事情呢~~", conn.RemoteAddr())
 }
 
 //OnPanic .
 func (RootHandle) OnPanic(conn *srv.Conn, err error, next func()) {
 	logs.Errorf("%s: 对方好像发生了一些不得了的事情哦~~,错误信息:%s", conn.RemoteAddr(), err)
-}
-
-//OnSendError .
-func (RootHandle) OnSendError(conn *srv.Conn, packet srv.Packet, err error, next func()) {
-	logs.Errorf("%s: 发送数据的时间好像有点久诶~~,错误信息:%s", conn.RemoteAddr(), err)
 }
 
 //OnRecvError .

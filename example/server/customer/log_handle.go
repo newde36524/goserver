@@ -49,18 +49,13 @@ func (LogHandle) OnClose(state *srv.ConnState, next func()) {
 	next()
 }
 
-//OnTimeOut .
-func (LogHandle) OnTimeOut(conn *srv.Conn, code srv.TimeOutState, next func()) {
+//OnRecvTimeOut .
+func (LogHandle) OnRecvTimeOut(conn *srv.Conn, next func()) {
 	next()
 }
 
 //OnPanic .
 func (LogHandle) OnPanic(conn *srv.Conn, err error, next func()) {
-	next()
-}
-
-//OnSendError .
-func (LogHandle) OnSendError(conn *srv.Conn, packet srv.Packet, err error, next func()) {
 	next()
 }
 
