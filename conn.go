@@ -49,8 +49,7 @@ func NewConn(rwc net.Conn, option ConnOption, hs []Handle) (result *Conn) {
 
 //UseDebug open inner debug log
 func (c *Conn) UseDebug() {
-	c.isDebug = c.option.Logger != nil
-	if c.option.Logger == nil {
+	if c.isDebug = c.option.Logger != nil; !c.isDebug {
 		fmt.Println("goserver.Conn.UseDebug: c.option.Logger is nil")
 	}
 }
