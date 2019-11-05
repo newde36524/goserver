@@ -73,7 +73,7 @@ func (c *Conn) Raw() net.Conn {
 func (c *Conn) Run() {
 	go c.safeFn(func() {
 		c.pipe(func(h Handle, next func()) { h.OnConnection(c, next) })
-		c.recv()
+		c.recv(1)
 	})
 }
 
@@ -153,37 +153,43 @@ func (c *Conn) Close(msg ...string) {
 }
 
 //readPacket read a packet
-func (c *Conn) readPacket() <-chan Packet {
-	result := make(chan Packet, 1)
+func (c *Conn) readPacket(size int) <-chan Packet {
+	result := make(chan Packet, size)
 	go c.safeFn(func() {
 		defer close(result)
-		var p Packet
-		c.pipe(func(h Handle, next func()) {
-			temp := h.ReadPacket(c, next)
-			//防止内部调用next()方法重复覆盖p的值
-			//当前机制保证在管道处理流程中,只要有一个handle的ReadPacket方法返回值不为nil时才有效,之后无效
-			if temp != nil && p != nil {
-				panic("goserver.Conn.readPacket: 禁止在管道链路中重复读取生成Packet,在管道中读取数据帧,只能有一个管道返回Packet,其余只能返回nil")
+		for {
+			var p Packet
+			c.pipe(func(h Handle, next func()) {
+				temp := h.ReadPacket(c, next)
+				//防止内部调用next()方法重复覆盖p的值
+				//当前机制保证在管道处理流程中,只要有一个handle的ReadPacket方法返回值不为nil时才有效,之后无效
+				if temp != nil && p != nil {
+					panic("goserver.Conn.readPacket: 禁止在管道链路中重复读取生成Packet,在管道中读取数据帧,只能有一个管道返回Packet,其余只能返回nil")
+				}
+				if temp != nil && p == nil {
+					p = temp
+				}
+			})
+			select {
+			case <-c.context.Done():
+				return
+			case result <- p:
 			}
-			if temp != nil && p == nil {
-				p = temp
-			}
-		})
-		result <- p
+		}
 	})
 	return result
 }
 
 //recv create a receive only packet channel
-func (c *Conn) recv() {
+func (c *Conn) recv(size int) {
 	go c.safeFn(func() {
 		defer func() {
 			if c.isDebug {
 				c.option.Logger.Debugf("%s: goserver.Conn.recv: recv goruntinue exit", c.RemoteAddr())
 			}
 		}()
+		pch := c.readPacket(size)
 		for c.rwc != nil {
-			pch := c.readPacket()
 			select {
 			case <-c.context.Done():
 				return
