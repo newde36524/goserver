@@ -97,9 +97,7 @@ func (c *Conn) Write(packet Packet) (err error) {
 	}
 	sendData, err := packet.Serialize()
 	if err != nil {
-		if c.option.Logger != nil {
-			c.option.Logger.Error(err)
-		}
+		return
 	}
 	c.rwc.SetWriteDeadline(time.Now().Add(c.option.SendTimeOut))
 	_, err = c.rwc.Write(sendData)
