@@ -202,15 +202,15 @@ func (c *Conn) recv(size int) {
 				case <-time.After(c.option.HandTimeOut):
 					c.pipe(func(h Handle, next func()) { h.OnHandTimeOut(c, next) })
 				case hch <- struct{}{}:
+					go func() {
+						c.pipe(func(h Handle, next func()) { h.OnMessage(c, p, next) })
+						select {
+						case <-c.context.Done():
+							return
+						case <-hch:
+						}
+					}()
 				}
-				go func() {
-					c.pipe(func(h Handle, next func()) { h.OnMessage(c, p, next) })
-					select {
-					case <-c.context.Done():
-						return
-					case <-hch:
-					}
-				}()
 			}
 		}
 	})
