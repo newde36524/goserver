@@ -195,7 +195,18 @@ func (c *Conn) recv(size int) {
 				c.pipe(func(h Handle, next func()) { h.OnRecvTimeOut(c, next) })
 			case p := <-pch:
 				c.state.RecvPacketCount++
-				c.pipe(func(h Handle, next func()) { h.OnMessage(c, p, next) })
+				handCh := make(chan struct{}, 1)
+				go func() {
+					c.pipe(func(h Handle, next func()) { h.OnMessage(c, p, next) })
+					handCh <- struct{}{}
+				}()
+				select {
+				case <-c.context.Done():
+					return
+				case <-time.After(c.option.HandTimeOut):
+					c.pipe(func(h Handle, next func()) { h.OnHandTimeOut(c, next) })
+				case <-handCh:
+				}
 			}
 		}
 	})

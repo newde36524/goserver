@@ -6,7 +6,8 @@ type Handle interface {
 	OnConnection(conn *Conn, next func())           //连接建立时处理
 	OnMessage(conn *Conn, p Packet, next func())    //每次获取到消息时处理
 	OnRecvError(conn *Conn, err error, next func()) //连接数据接收异常
-	OnRecvTimeOut(conn *Conn, next func())          //超时处理
+	OnRecvTimeOut(conn *Conn, next func())          //接收数据超时处理
+	OnHandTimeOut(conn *Conn, next func())          //处理数据超时处理
 	OnClose(state *ConnState, next func())          //连接关闭时处理
 	OnPanic(conn *Conn, err error, next func())     //Panic时处理
 }

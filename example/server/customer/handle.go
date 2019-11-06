@@ -71,6 +71,11 @@ func (RootHandle) OnRecvTimeOut(conn *srv.Conn, next func()) {
 	logs.Infof("%s: 对方好像在做一些灰暗的事情呢~~", conn.RemoteAddr())
 }
 
+//OnHandTimeOut .
+func (RootHandle) OnHandTimeOut(conn *srv.Conn, next func()) {
+	logs.Infof("%s: 我好像检查得有些慢耶~~", conn.RemoteAddr())
+}
+
 //OnPanic .
 func (RootHandle) OnPanic(conn *srv.Conn, err error, next func()) {
 	logs.Errorf("%s: 对方好像发生了一些不得了的事情哦~~,错误信息:%s", conn.RemoteAddr(), err)

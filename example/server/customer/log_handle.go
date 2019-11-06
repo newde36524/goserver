@@ -54,6 +54,11 @@ func (LogHandle) OnRecvTimeOut(conn *srv.Conn, next func()) {
 	next()
 }
 
+//OnHandTimeOut .
+func (LogHandle) OnHandTimeOut(conn *srv.Conn, next func()) {
+	next()
+}
+
 //OnPanic .
 func (LogHandle) OnPanic(conn *srv.Conn, err error, next func()) {
 	next()
