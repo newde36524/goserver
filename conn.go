@@ -199,8 +199,6 @@ func (c *Conn) recv(size int) {
 				select {
 				case <-c.context.Done():
 					return
-				case <-time.After(c.option.HandTimeOut):
-					c.pipe(func(h Handle, next func()) { h.OnHandTimeOut(c, next) })
 				case hch <- struct{}{}:
 					sign := make(chan struct{})
 					go func() {
