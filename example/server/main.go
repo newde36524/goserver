@@ -29,13 +29,15 @@ func init() {
 
 func main() {
 	address := "0.0.0.0:12336"
-	logger, err := srv.NewDefaultLogger()
-	opt := srv.ConnOption{
-		SendTimeOut: 1 * time.Minute, //发送消息包超时时间
-		RecvTimeOut: 1 * time.Minute, //接收消息包超时时间
-		Logger:      logger,          //日志打印对象
-	}
-	server, err := srv.TCPServer(opt)
+	server, err := srv.TCPServer(srv.ModOption(func(opt *srv.ConnOption) {
+		logger, err := srv.NewDefaultLogger()
+		if err != nil {
+			fmt.Println(err)
+		}
+		opt.SendTimeOut= time.Minute //发送消息包超时时间
+		opt.RecvTimeOut= time.Minute //接收消息包超时时间
+		opt.Logger=      logger      //日志打印对象
+	}))
 	if err != nil {
 		logs.Error(err)
 	}
@@ -45,5 +47,18 @@ func main() {
 	server.Binding(address)
 	logs.Infof("服务器开始监听...  监听地址:%s", address)
 	fmt.Scanln()
+
+	// signalCh := make(chan os.Signal)
+	// signal.Notify(signalCh, os.Interrupt)
+	// go func() {
+	// 	for {
+	// 		select {
+	// 		case sign := <-signalCh:
+	// 			fmt.Println("接收到消息:", sign)
+	// 			sign.Signal()
+	// 		}
+	// 	}
+	// }()
+
 	<-context.Background().Done()
 }

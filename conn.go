@@ -37,7 +37,7 @@ func NewConn(rwc net.Conn, option ConnOption, hs []Handle) (result *Conn) {
 	result = &Conn{
 		rwc:     rwc,
 		option:  option,
-		handles: hs,
+		handles: hs, 
 		state: &ConnState{
 			ActiveTime: time.Now(),
 			RemoteAddr: rwc.RemoteAddr().String(),

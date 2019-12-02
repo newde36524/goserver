@@ -9,3 +9,5 @@ type ConnOption struct {
 	HandTimeOut time.Duration //处理消息超时时间
 	Logger      Logger        //日志打印对象
 }
+
+type ModOption func(*ConnOption)
