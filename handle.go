@@ -139,3 +139,35 @@ func (h *EmptyHandle) OnPanic(conn *Conn, err error, next func()) {}
 
 //OnRecvError .
 func (h *EmptyHandle) OnRecvError(conn *Conn, err error, next func()) {}
+
+//BashHandle .
+type BashHandle struct {
+	Handle
+}
+
+//ReadPacket .
+func (h *BashHandle) ReadPacket(conn *Conn, next func()) Packet {
+	next()
+	return nil
+}
+
+//OnConnection .
+func (h *BashHandle) OnConnection(conn *Conn, next func()) { next() }
+
+//OnMessage .
+func (h *BashHandle) OnMessage(conn *Conn, p Packet, next func()) { next() }
+
+//OnRecvError .
+func (h *BashHandle) OnRecvError(conn *Conn, err error, next func()) { next() }
+
+//OnRecvTimeOut .
+func (h *BashHandle) OnRecvTimeOut(conn *Conn, next func()) { next() }
+
+//OnHandTimeOut .
+func (h *BashHandle) OnHandTimeOut(conn *Conn, next func()) { next() }
+
+//OnClose .
+func (h *BashHandle) OnClose(state *ConnState, next func()) { next() }
+
+//OnPanic .
+func (h *BashHandle) OnPanic(conn *Conn, err error, next func()) { next() }
