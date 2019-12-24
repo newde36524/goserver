@@ -10,4 +10,5 @@ type ConnOption struct {
 	Logger      Logger        //日志打印对象
 }
 
+//ModOption .
 type ModOption func(*ConnOption)

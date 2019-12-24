@@ -1,3 +1,5 @@
+package goserver
+
 /*
 工作协程：
 	1.数据接收协程
@@ -10,8 +12,6 @@
 	1.消息前后的关联处理不方便 20190914
 	2.代码比较粗糙 20190914
 */
-package goserver
-
 import (
 	"context"
 	"fmt"
@@ -37,7 +37,7 @@ func NewConn(rwc net.Conn, option ConnOption, hs []Handle) (result *Conn) {
 	result = &Conn{
 		rwc:     rwc,
 		option:  option,
-		handles: hs, 
+		handles: hs,
 		state: &ConnState{
 			ActiveTime: time.Now(),
 			RemoteAddr: rwc.RemoteAddr().String(),
