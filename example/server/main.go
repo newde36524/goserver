@@ -36,6 +36,7 @@ func main() {
 		}
 		opt.SendTimeOut = time.Minute //发送消息包超时时间
 		opt.RecvTimeOut = time.Minute //接收消息包超时时间
+		opt.HandTimeOut = time.Minute //处理消息包超时时间
 		opt.Logger = logger           //日志打印对象
 	}))
 	if err != nil {
