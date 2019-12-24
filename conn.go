@@ -188,6 +188,7 @@ func (c *Conn) recv(size int) {
 		}()
 		pch := c.readPacket(size)
 		hch := make(chan struct{}, 1)
+		defer close(hch)
 		for c.rwc != nil {
 			select {
 			case <-c.context.Done():

@@ -1,6 +1,7 @@
 package goserver
 
 import (
+	"fmt"
 	"net"
 	"runtime/debug"
 	"time"
@@ -13,10 +14,10 @@ func TCPServer(modOption ModOption) (*Server, error) {
 
 //Server tcp服务器
 type Server struct {
-	isDebug bool       //是否开始debug日志
-	handles []Handle   //连接处理程序管道
-	network string     //网络
-	modOption     ModOption //连接配置项
+	isDebug   bool      //是否开始debug日志
+	handles   []Handle  //连接处理程序管道
+	network   string    //网络
+	modOption ModOption //连接配置项
 }
 
 //New new server
@@ -27,8 +28,8 @@ func New(network string, modOption ModOption) (srv *Server, err error) {
 	// 根据服务器开启多CPU功能
 	// runtime.GOMAXPROCS(runtime.NumCPU())
 	srv = &Server{
-		network: network,
-		modOption:     modOption,
+		network:   network,
+		modOption: modOption,
 	}
 	return
 }
@@ -49,18 +50,22 @@ func (s *Server) Binding(address string) {
 	if err != nil {
 		return
 	}
-	option:=ConnOption{}
+	option := ConnOption{}
 	s.modOption(&option)
 	go func() {
 		defer listener.Close()
 		defer func() {
 			defer recover()
 			if err := recover(); err != nil {
-				option.Logger.Error(err)
-				option.Logger.Error(debug.Stack())
+				if option.Logger != nil {
+					option.Logger.Error(err)
+					option.Logger.Error(debug.Stack())
+				} else {
+					fmt.Println(err)
+					fmt.Println(debug.Stack())
+				}
 			}
 		}()
-		
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
