@@ -240,7 +240,7 @@ func (c *Conn) pipe(fn func(Handle, context.Context, func(context.Context))) {
 			fn(c.handles[index-1], ctx, next)
 		}
 	}
-	next(context.Background())
+	next(c.context)
 	return
 }
 
