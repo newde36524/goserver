@@ -1,15 +1,17 @@
 package goserver
 
+import "context"
+
 //Handle 处理类
 type Handle interface {
-	ReadPacket(conn *Conn, next func()) Packet      //读取包
-	OnConnection(conn *Conn, next func())           //连接建立时处理
-	OnMessage(conn *Conn, p Packet, next func())    //每次获取到消息时处理
-	OnRecvError(conn *Conn, err error, next func()) //连接数据接收异常
-	OnRecvTimeOut(conn *Conn, next func())          //接收数据超时处理
-	OnHandTimeOut(conn *Conn, next func())          //处理数据超时处理
-	OnClose(state *ConnState, next func())          //连接关闭时处理
-	OnPanic(conn *Conn, err error, next func())     //Panic时处理
+	ReadPacket(ctx context.Context, conn *Conn, next func(context.Context)) Packet      //读取包
+	OnConnection(ctx context.Context, conn *Conn, next func(context.Context))           //连接建立时处理
+	OnMessage(ctx context.Context, conn *Conn, p Packet, next func(context.Context))    //每次获取到消息时处理
+	OnRecvError(ctx context.Context, conn *Conn, err error, next func(context.Context)) //连接数据接收异常
+	OnRecvTimeOut(ctx context.Context, conn *Conn, next func(context.Context))          //接收数据超时处理
+	OnHandTimeOut(ctx context.Context, conn *Conn, next func(context.Context))          //处理数据超时处理
+	OnClose(ctx context.Context, state *ConnState, next func(context.Context))          //连接关闭时处理
+	OnPanic(ctx context.Context, conn *Conn, err error, next func(context.Context))     //Panic时处理
 }
 
 //CoreHandle 包装接口实现类
@@ -85,33 +87,44 @@ func (h *CoreHandle) Next() *CoreHandle { return h.next }
 func (h *CoreHandle) Prev() *CoreHandle { return h.prev }
 
 //ReadPacket .
-func (h *CoreHandle) ReadPacket(conn *Conn, next func()) Packet {
-	p := h.handle.ReadPacket(conn, next)
+func (h *CoreHandle) ReadPacket(ctx context.Context, conn *Conn, next func(context.Context)) Packet {
+	p := h.handle.ReadPacket(ctx, conn, next)
 	return p
 }
 
 //OnConnection .
-func (h *CoreHandle) OnConnection(conn *Conn, next func()) { h.handle.OnConnection(conn, next) }
+func (h *CoreHandle) OnConnection(ctx context.Context, conn *Conn, next func(context.Context)) {
+	h.handle.OnConnection(ctx, conn, next)
+}
 
 //OnMessage .
-func (h *CoreHandle) OnMessage(conn *Conn, p Packet, next func()) {
-	h.handle.OnMessage(conn, p, next)
+func (h *CoreHandle) OnMessage(ctx context.Context, conn *Conn, p Packet, next func(context.Context)) {
+	h.handle.OnMessage(ctx, conn, p, next)
 }
 
 //OnClose .
-func (h *CoreHandle) OnClose(state *ConnState, next func()) { h.handle.OnClose(state, next) }
+func (h *CoreHandle) OnClose(ctx context.Context, state *ConnState, next func(context.Context)) {
+	h.handle.OnClose(ctx, state, next)
+}
 
 //OnRecvTimeOut .
-func (h *CoreHandle) OnRecvTimeOut(conn *Conn, next func()) {
-	h.handle.OnRecvTimeOut(conn, next)
+func (h *CoreHandle) OnRecvTimeOut(ctx context.Context, conn *Conn, next func(context.Context)) {
+	h.handle.OnRecvTimeOut(ctx, conn, next)
 }
 
 //OnPanic .
-func (h *CoreHandle) OnPanic(conn *Conn, err error, next func()) { h.handle.OnPanic(conn, err, next) }
+func (h *CoreHandle) OnPanic(ctx context.Context, conn *Conn, err error, next func(context.Context)) {
+	h.handle.OnPanic(ctx, conn, err, next)
+}
 
 //OnRecvError .
-func (h *CoreHandle) OnRecvError(conn *Conn, err error, next func()) {
-	h.handle.OnRecvError(conn, err, next)
+func (h *CoreHandle) OnRecvError(ctx context.Context, conn *Conn, err error, next func(context.Context)) {
+	h.handle.OnRecvError(ctx, conn, err, next)
+}
+
+//OnHandTimeOut .
+func (h *CoreHandle) OnHandTimeOut(ctx context.Context, conn *Conn, next func(context.Context)) {
+	h.handle.OnHandTimeOut(ctx, conn, next)
 }
 
 //EmptyHandle .
@@ -120,54 +133,80 @@ type EmptyHandle struct {
 }
 
 //ReadPacket .
-func (h *EmptyHandle) ReadPacket(conn *Conn, next func()) Packet { return nil }
-
-//OnConnection .
-func (h *EmptyHandle) OnConnection(conn *Conn, next func()) {}
-
-//OnMessage .
-func (h *EmptyHandle) OnMessage(conn *Conn, p Packet, next func()) {}
-
-//OnClose .
-func (h *EmptyHandle) OnClose(state *ConnState, next func()) {}
-
-//OnRecvTimeOut .
-func (h *EmptyHandle) OnRecvTimeOut(conn *Conn, next func()) {}
-
-//OnPanic .
-func (h *EmptyHandle) OnPanic(conn *Conn, err error, next func()) {}
-
-//OnRecvError .
-func (h *EmptyHandle) OnRecvError(conn *Conn, err error, next func()) {}
-
-//BashHandle .
-type BashHandle struct {
-	Handle
-}
-
-//ReadPacket .
-func (h *BashHandle) ReadPacket(conn *Conn, next func()) Packet {
-	next()
+func (h *EmptyHandle) ReadPacket(ctx context.Context, conn *Conn, next func(context.Context)) Packet {
 	return nil
 }
 
 //OnConnection .
-func (h *BashHandle) OnConnection(conn *Conn, next func()) { next() }
+func (h *EmptyHandle) OnConnection(ctx context.Context, conn *Conn, next func(context.Context)) {
+}
 
 //OnMessage .
-func (h *BashHandle) OnMessage(conn *Conn, p Packet, next func()) { next() }
-
-//OnRecvError .
-func (h *BashHandle) OnRecvError(conn *Conn, err error, next func()) { next() }
-
-//OnRecvTimeOut .
-func (h *BashHandle) OnRecvTimeOut(conn *Conn, next func()) { next() }
-
-//OnHandTimeOut .
-func (h *BashHandle) OnHandTimeOut(conn *Conn, next func()) { next() }
+func (h *EmptyHandle) OnMessage(ctx context.Context, conn *Conn, p Packet, next func(context.Context)) {
+}
 
 //OnClose .
-func (h *BashHandle) OnClose(state *ConnState, next func()) { next() }
+func (h *EmptyHandle) OnClose(ctx context.Context, state *ConnState, next func(context.Context)) {
+}
+
+//OnRecvTimeOut .
+func (h *EmptyHandle) OnRecvTimeOut(ctx context.Context, conn *Conn, next func(context.Context)) {
+}
 
 //OnPanic .
-func (h *BashHandle) OnPanic(conn *Conn, err error, next func()) { next() }
+func (h *EmptyHandle) OnPanic(ctx context.Context, conn *Conn, err error, next func(context.Context)) {
+}
+
+//OnRecvError .
+func (h *EmptyHandle) OnRecvError(ctx context.Context, conn *Conn, err error, next func(context.Context)) {
+}
+
+//OnHandTimeOut .
+func (h *EmptyHandle) OnHandTimeOut(ctx context.Context, conn *Conn, next func(context.Context)) {
+}
+
+//BaseHandle .
+type BaseHandle struct {
+	Handle
+}
+
+//ReadPacket .
+func (h *BaseHandle) ReadPacket(ctx context.Context, conn *Conn, next func(context.Context)) Packet {
+	next(ctx)
+	return nil
+}
+
+//OnConnection .
+func (h *BaseHandle) OnConnection(ctx context.Context, conn *Conn, next func(context.Context)) {
+	next(ctx)
+}
+
+//OnMessage .
+func (h *BaseHandle) OnMessage(ctx context.Context, conn *Conn, p Packet, next func(context.Context)) {
+	next(ctx)
+}
+
+//OnRecvError .
+func (h *BaseHandle) OnRecvError(ctx context.Context, conn *Conn, err error, next func(context.Context)) {
+	next(ctx)
+}
+
+//OnRecvTimeOut .
+func (h *BaseHandle) OnRecvTimeOut(ctx context.Context, conn *Conn, next func(context.Context)) {
+	next(ctx)
+}
+
+//OnHandTimeOut .
+func (h *BaseHandle) OnHandTimeOut(ctx context.Context, conn *Conn, next func(context.Context)) {
+	next(ctx)
+}
+
+//OnClose .
+func (h *BaseHandle) OnClose(ctx context.Context, state *ConnState, next func(context.Context)) {
+	next(ctx)
+}
+
+//OnPanic .
+func (h *BaseHandle) OnPanic(ctx context.Context, conn *Conn, err error, next func(context.Context)) {
+	next(ctx)
+}

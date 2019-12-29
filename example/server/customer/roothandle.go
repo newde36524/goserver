@@ -1,6 +1,7 @@
 package customer
 
 import (
+	"context"
 	"io"
 	"net"
 
@@ -17,7 +18,7 @@ type RootHandle struct {
 }
 
 //ReadPacket .
-func (RootHandle) ReadPacket(conn *srv.Conn, next func()) srv.Packet {
+func (RootHandle) ReadPacket(ctx context.Context, conn *srv.Conn, next func(context.Context)) srv.Packet {
 	//todo 定义读取数据帧的规则
 	b := make([]byte, 1024)
 	n, err := conn.Read(b)
@@ -44,14 +45,15 @@ func (RootHandle) ReadPacket(conn *srv.Conn, next func()) srv.Packet {
 }
 
 //OnConnection .
-func (RootHandle) OnConnection(conn *srv.Conn, next func()) {
+func (RootHandle) OnConnection(ctx context.Context, conn *srv.Conn, next func(context.Context)) {
 	//todo 连接建立时处理,用于一些建立连接时,需要主动下发数据包的场景,可以在这里开启心跳协程,做登录验证等等
 	logs.Infof("%s: 对方好像对你很感兴趣呦", conn.RemoteAddr())
 }
 
 //OnMessage .
-func (RootHandle) OnMessage(conn *srv.Conn, p srv.Packet, next func()) {
+func (RootHandle) OnMessage(ctx context.Context, conn *srv.Conn, p srv.Packet, next func(context.Context)) {
 	// panic("测试异常")
+	logs.Info(ctx.Value("logger"))
 	logs.Infof("%s:我好像收到了不知名快递哦", conn.RemoteAddr())
 	sendP := &Packet{}
 	if p != nil {
@@ -62,26 +64,26 @@ func (RootHandle) OnMessage(conn *srv.Conn, p srv.Packet, next func()) {
 }
 
 //OnClose .
-func (RootHandle) OnClose(state *srv.ConnState, next func()) {
+func (RootHandle) OnClose(ctx context.Context, state *srv.ConnState, next func(context.Context)) {
 	logs.Infof("对方好像撤退了呦~~,连接状态:%s", state.String())
 }
 
 //OnRecvTimeOut .
-func (RootHandle) OnRecvTimeOut(conn *srv.Conn, next func()) {
+func (RootHandle) OnRecvTimeOut(ctx context.Context, conn *srv.Conn, next func(context.Context)) {
 	logs.Infof("%s: 对方好像在做一些灰暗的事情呢~~", conn.RemoteAddr())
 }
 
 //OnHandTimeOut .
-func (RootHandle) OnHandTimeOut(conn *srv.Conn, next func()) {
+func (RootHandle) OnHandTimeOut(ctx context.Context, conn *srv.Conn, next func(context.Context)) {
 	logs.Infof("%s: 我好像检查得有些慢耶~~", conn.RemoteAddr())
 }
 
 //OnPanic .
-func (RootHandle) OnPanic(conn *srv.Conn, err error, next func()) {
+func (RootHandle) OnPanic(ctx context.Context, conn *srv.Conn, err error, next func(context.Context)) {
 	logs.Errorf("%s: 对方好像发生了一些不得了的事情哦~~,错误信息:%s", conn.RemoteAddr(), err)
 }
 
 //OnRecvError .
-func (RootHandle) OnRecvError(conn *srv.Conn, err error, next func()) {
+func (RootHandle) OnRecvError(ctx context.Context, conn *srv.Conn, err error, next func(context.Context)) {
 	logs.Errorf("%s: 接收数据的时间好像有点久诶~~,错误信息:%s", conn.RemoteAddr(), err)
 }

@@ -42,8 +42,8 @@ func main() {
 	if err != nil {
 		logs.Error(err)
 	}
-	server.Use(customer.LogHandle{})
-	server.Use(customer.RootHandle{})
+	server.Use(new(customer.LogHandle))
+	server.Use(new(customer.RootHandle))
 	server.UseDebug()
 	server.Binding(address)
 	logs.Infof("服务器开始监听...  监听地址:%s", address)
