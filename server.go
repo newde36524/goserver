@@ -50,8 +50,26 @@ func (s *Server) Binding(address string) {
 	if err != nil {
 		return
 	}
-	option := ConnOption{}
+	var (
+		recvTimeOut time.Duration
+		sendTimeOut time.Duration
+		handTimeOut time.Duration
+	)
+	option := ConnOption{
+		RecvTimeOut: recvTimeOut,
+		SendTimeOut: sendTimeOut,
+		HandTimeOut: handTimeOut,
+	}
 	s.modOption(&option)
+	if option.RecvTimeOut == recvTimeOut {
+		panic("goserver: recvTimeOut option not set")
+	}
+	if option.SendTimeOut == recvTimeOut {
+		panic("goserver: sendTimeOut option not set")
+	}
+	if option.HandTimeOut == recvTimeOut {
+		panic("goserver: handTimeOut option not set")
+	}
 	go func() {
 		defer listener.Close()
 		defer func() {
