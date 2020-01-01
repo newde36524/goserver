@@ -50,10 +50,31 @@ func (s *Server) Binding(address string) {
 	if err != nil {
 		return
 	}
+	var (
+		recvTimeOut               time.Duration
+		sendTimeOut               time.Duration
+		handTimeOut               time.Duration
+		maxWaitCountByHandTimeOut int
+	)
 	option := ConnOption{
+		RecvTimeOut:               recvTimeOut,
+		SendTimeOut:               sendTimeOut,
+		HandTimeOut:               handTimeOut,
 		MaxWaitCountByHandTimeOut: 1,
 	}
 	s.modOption(&option)
+	if option.RecvTimeOut == recvTimeOut {
+		panic("goserver: recvTimeOut option not set")
+	}
+	if option.SendTimeOut == recvTimeOut {
+		panic("goserver: sendTimeOut option not set")
+	}
+	if option.HandTimeOut == recvTimeOut {
+		panic("goserver: handTimeOut option not set")
+	}
+	if option.MaxWaitCountByHandTimeOut < maxWaitCountByHandTimeOut {
+		panic("goserver: The maxWaitCountByHandTimeOut value must be greater than or equal to 1")
+	}
 	go func() {
 		defer listener.Close()
 		defer func() {
