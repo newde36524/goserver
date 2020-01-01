@@ -204,7 +204,6 @@ func (c Conn) recv(size int) {
 			case <-time.After(c.option.RecvTimeOut):
 				c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnRecvTimeOut(ctx, c, next) })
 			case p := <-pch:
-				c.state.RecvPacketCount++
 				select {
 				case <-c.context.Done():
 					return
