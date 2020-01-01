@@ -33,8 +33,8 @@ type Conn struct {
 }
 
 //NewConn return a wrap of raw conn
-func NewConn(rwc net.Conn, option ConnOption, hs []Handle) (result *Conn) {
-	result = &Conn{
+func NewConn(rwc net.Conn, option ConnOption, hs []Handle) *Conn {
+	result := &Conn{
 		rwc:     rwc,
 		option:  option,
 		handles: hs,
@@ -43,34 +43,41 @@ func NewConn(rwc net.Conn, option ConnOption, hs []Handle) (result *Conn) {
 			RemoteAddr: rwc.RemoteAddr().String(),
 		},
 	}
+	result.valid()
 	result.context, result.cancel = context.WithCancel(context.Background())
-	return
+	return result
+}
+
+func (c Conn) valid() {
+	if c.option.MaxWaitCountByHandTimeOut <= 0 {
+		panic("goserver.Conn.valid: option.MaxWaitCountByHandTimeOut不允许设置为0,这会导致无法处理数据包")
+	}
 }
 
 //UseDebug open inner debug log
-func (c *Conn) UseDebug() {
+func (c Conn) UseDebug() {
 	if c.isDebug = c.option.Logger != nil; !c.isDebug {
 		fmt.Println("goserver.Conn.UseDebug: c.option.Logger is nil")
 	}
 }
 
 //RemoteAddr get remote client's ip address
-func (c *Conn) RemoteAddr() string {
+func (c Conn) RemoteAddr() string {
 	return c.rwc.RemoteAddr().String()
 }
 
 //LocalAddr get host ip address
-func (c *Conn) LocalAddr() string {
+func (c Conn) LocalAddr() string {
 	return c.rwc.LocalAddr().String()
 }
 
 //Raw get row connection
-func (c *Conn) Raw() net.Conn {
+func (c Conn) Raw() net.Conn {
 	return c.rwc
 }
 
 //Run start run server and receive and handle and send packet
-func (c *Conn) Run() {
+func (c Conn) Run() {
 	go c.safeFn(func() {
 		c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, c, next) })
 		c.recv(1)
@@ -78,7 +85,7 @@ func (c *Conn) Run() {
 }
 
 //Read read a data frame from connection
-func (c *Conn) Read(b []byte) (n int, err error) {
+func (c Conn) Read(b []byte) (n int, err error) {
 	c.rwc.SetReadDeadline(time.Now().Add(c.option.RecvTimeOut))
 	n, err = c.rwc.Read(b)
 	if err != nil {
@@ -88,7 +95,7 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 }
 
 //Write send a packet to remote connection
-func (c *Conn) Write(packet Packet) (err error) {
+func (c Conn) Write(packet Packet) (err error) {
 	if packet == nil {
 		if c.isDebug {
 			c.option.Logger.Debugf("%s: goserver.Conn.Write: packet is nil,do nothing", c.RemoteAddr())
@@ -106,7 +113,7 @@ func (c *Conn) Write(packet Packet) (err error) {
 }
 
 //Close close connection
-func (c *Conn) Close(msg ...string) {
+func (c Conn) Close(msg ...string) {
 	defer func() {
 		select {
 		case <-c.context.Done():
@@ -151,7 +158,7 @@ func (c *Conn) Close(msg ...string) {
 }
 
 //readPacket read a packet
-func (c *Conn) readPacket(size int) <-chan Packet {
+func (c Conn) readPacket(size int) <-chan Packet {
 	result := make(chan Packet, size)
 	go c.safeFn(func() {
 		defer close(result)
@@ -172,6 +179,7 @@ func (c *Conn) readPacket(size int) <-chan Packet {
 			case <-c.context.Done():
 				return
 			case result <- p:
+				c.state.RecvPacketCount++
 			}
 		}
 	})
@@ -179,7 +187,7 @@ func (c *Conn) readPacket(size int) <-chan Packet {
 }
 
 //recv create a receive only packet channel
-func (c *Conn) recv(size int) {
+func (c Conn) recv(size int) {
 	go c.safeFn(func() {
 		defer func() {
 			if c.isDebug {
@@ -187,7 +195,7 @@ func (c *Conn) recv(size int) {
 			}
 		}()
 		pch := c.readPacket(size)
-		hch := make(chan struct{}, 1)
+		hch := make(chan struct{}, c.option.MaxWaitCountByHandTimeOut) //防止OnMessage协程堆积
 		defer close(hch)
 		for c.rwc != nil {
 			select {
@@ -223,7 +231,7 @@ func (c *Conn) recv(size int) {
 }
 
 //pipe pipeline provider
-func (c *Conn) pipe(fn func(Handle, context.Context, func(context.Context))) {
+func (c Conn) pipe(fn func(Handle, context.Context, func(context.Context))) {
 	index := 0
 	var next func(context.Context)
 	next = func(ctx context.Context) {
@@ -245,7 +253,7 @@ func (c *Conn) pipe(fn func(Handle, context.Context, func(context.Context))) {
 }
 
 //safeFn proxy agent,used to safe invoke and recover panic
-func (c *Conn) safeFn(fn func()) {
+func (c Conn) safeFn(fn func()) {
 	defer func() {
 		if err := recover(); err != nil {
 			defer recover()

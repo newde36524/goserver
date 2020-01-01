@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	srv "github.com/newde36524/goserver"
+	"github.com/newde36524/goserver"
 	customer "github.com/newde36524/goserver/example/Server/customer"
 
 	"github.com/issue9/logs"
@@ -29,8 +29,8 @@ func init() {
 
 func main() {
 	address := "0.0.0.0:12336"
-	server, err := srv.TCPServer(srv.ModOption(func(opt *srv.ConnOption) {
-		logger, err := srv.NewDefaultLogger()
+	server, err := goserver.TCPServer(goserver.ModOption(func(opt *goserver.ConnOption) {
+		logger, err := goserver.NewDefaultLogger()
 		if err != nil {
 			fmt.Println(err)
 		}

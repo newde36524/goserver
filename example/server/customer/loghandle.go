@@ -15,7 +15,7 @@ type LogHandle struct {
 }
 
 //OnMessage .
-func (LogHandle) OnMessage(ctx context.Context, conn *goserver.Conn, p goserver.Packet, next func(context.Context)) {
+func (LogHandle) OnMessage(ctx context.Context, conn goserver.Conn, p goserver.Packet, next func(context.Context)) {
 	logs.Infof("日志模块输出:  开始计时")
 	startTime := time.Now()
 	defer func() {

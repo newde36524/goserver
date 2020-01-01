@@ -50,7 +50,9 @@ func (s *Server) Binding(address string) {
 	if err != nil {
 		return
 	}
-	option := ConnOption{}
+	option := ConnOption{
+		MaxWaitCountByHandTimeOut: 1,
+	}
 	s.modOption(&option)
 	go func() {
 		defer listener.Close()
