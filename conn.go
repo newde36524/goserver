@@ -210,7 +210,13 @@ func (c Conn) recv(size int) {
 				case hch <- struct{}{}:
 					sign := make(chan struct{})
 					go func() {
-						defer close(sign)
+						defer func() {
+							select {
+							case <-sign:
+							default:
+								close(sign)
+							}
+						}()
 						c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnMessage(ctx, c, p, next) })
 						select {
 						case <-c.context.Done():
