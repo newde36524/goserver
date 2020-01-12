@@ -8,6 +8,7 @@ import (
 
 	"github.com/newde36524/goserver"
 	customer "github.com/newde36524/goserver/example/Server/customer"
+	"github.com/newde36524/goserver/handle"
 
 	"github.com/issue9/logs"
 )
@@ -42,6 +43,7 @@ func main() {
 	if err != nil {
 		logs.Error(err)
 	}
+	server.Use(handle.NewRoomHandle("room", 1024))
 	server.Use(new(customer.LogHandle))
 	server.Use(new(customer.RootHandle))
 	server.UseDebug()

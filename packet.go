@@ -10,20 +10,20 @@ type Packet interface {
 //P .
 type P struct {
 	Packet
-	data []byte
+	Data []byte
 }
 
 //SetBuffer .
 func (p *P) SetBuffer(frame []byte) {
-	p.data = frame
+	p.Data = frame
 }
 
 //GetBuffer .
 func (p *P) GetBuffer() []byte {
-	return p.data
+	return p.Data
 }
 
 //Serialize .
 func (p *P) Serialize() ([]byte, error) {
-	return p.data, nil
+	return p.Data, nil
 }

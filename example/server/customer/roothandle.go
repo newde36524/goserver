@@ -39,28 +39,35 @@ func (RootHandle) ReadPacket(ctx context.Context, conn goserver.Conn, next func(
 			}
 		}
 	}
-	p := &Packet{}
-	p.SetBuffer(b[:n])
-
+	p := &goserver.P{
+		Data: b[:n],
+	}
 	return p
 }
 
-// //OnConnection .
-// func (RootHandle) OnConnection(ctx context.Context, conn goserver.Conn, next func(context.Context)) {
-// 	//todo 连接建立时处理,用于一些建立连接时,需要主动下发数据包的场景,可以在这里开启心跳协程,做登录验证等等
-// 	logs.Infof("%s: 客户端建立连接", conn.RemoteAddr())
-// }
+//OnConnection .
+func (RootHandle) OnConnection(ctx context.Context, conn goserver.Conn, next func(context.Context)) {
+	//todo 连接建立时处理,用于一些建立连接时,需要主动下发数据包的场景,可以在这里开启心跳协程,做登录验证等等
+	logs.Infof("%s: 客户端建立连接", conn.RemoteAddr())
+}
 
 //OnMessage .
 func (RootHandle) OnMessage(ctx context.Context, conn goserver.Conn, p goserver.Packet, next func(context.Context)) {
 	logs.Info(ctx.Value("logger"))
 	logs.Infof("%s:我好像收到了不知名快递哦", conn.RemoteAddr())
-	sendP := &Packet{}
+	sendP := &goserver.P{}
 	if p != nil {
 		data := p.GetBuffer()
 		sendP.SetBuffer(data)
 	}
-	conn.Write(sendP)
+	if v, ok := ctx.Value("room").(map[string]goserver.Conn); ok {
+		for _, conn := range v {
+			conn.Write(sendP)
+		}
+	} else {
+		logs.Error("room 获取去连接Map  失败")
+	}
+
 	next(ctx)
 }
 

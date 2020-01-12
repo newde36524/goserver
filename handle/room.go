@@ -10,11 +10,14 @@ import (
 type roomHandle struct {
 	goserver.BaseHandle
 	clientMap map[string]goserver.Conn
+	ctxKey    string
 }
 
-func NewRoomHandle() goserver.Handle {
+//NewRoomHandle .
+func NewRoomHandle(key string, initcap int64) goserver.Handle {
 	return &roomHandle{
-		clientMap: make(map[string]goserver.Conn, 1024),
+		clientMap: make(map[string]goserver.Conn, initcap),
+		ctxKey:    key,
 	}
 }
 
@@ -23,10 +26,12 @@ func (h *roomHandle) OnConnection(ctx context.Context, conn goserver.Conn, next 
 	if _, ok := h.clientMap[conn.RemoteAddr()]; !ok {
 		h.clientMap[conn.RemoteAddr()] = conn
 	}
-	key := "room"
-	if ctx.Value(key) == nil {
-		ctx = context.WithValue(ctx, key, h.clientMap)
-	}
+	next(ctx)
+}
+
+//OnMessage .
+func (h *roomHandle) OnMessage(ctx context.Context, conn goserver.Conn, p goserver.Packet, next func(context.Context)) {
+	ctx = context.WithValue(ctx, h.ctxKey, h.clientMap)
 	next(ctx)
 }
 
