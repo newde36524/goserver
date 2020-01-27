@@ -194,14 +194,19 @@ func (c Conn) recv(size int) {
 				c.option.Logger.Debugf("%s: goserver.Conn.recv: recv goruntinue exit", c.RemoteAddr())
 			}
 		}()
+		recvTimer := time.NewTimer(c.option.RecvTimeOut)
+		defer recvTimer.Stop()
+		handTimer := time.NewTimer(c.option.HandTimeOut)
+		defer handTimer.Stop()
 		pch := c.readPacket(size)
 		hch := make(chan struct{}, c.option.MaxWaitCountByHandTimeOut) //防止OnMessage协程堆积
 		defer close(hch)
 		for c.rwc != nil {
+			recvTimer.Reset(c.option.RecvTimeOut)
 			select {
 			case <-c.context.Done():
 				return
-			case <-time.After(c.option.RecvTimeOut):
+			case <-recvTimer.C:
 				c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnRecvTimeOut(ctx, c, next) })
 			case p := <-pch:
 				select {
@@ -224,9 +229,10 @@ func (c Conn) recv(size int) {
 						case <-hch:
 						}
 					}()
+					handTimer.Reset(c.option.HandTimeOut)
 					select {
 					case <-sign:
-					case <-time.After(c.option.HandTimeOut):
+					case <-handTimer.C:
 						c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnHandTimeOut(ctx, c, next) })
 					}
 				}
