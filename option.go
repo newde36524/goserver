@@ -13,3 +13,34 @@ type ConnOption struct {
 
 //ModOption .
 type ModOption func(*ConnOption)
+
+func initOptions(options ...ModOption) *ConnOption {
+	var (
+		recvTimeOut               time.Duration
+		sendTimeOut               time.Duration
+		handTimeOut               time.Duration
+		maxWaitCountByHandTimeOut int
+	)
+	opt := &ConnOption{
+		RecvTimeOut:               recvTimeOut,
+		SendTimeOut:               sendTimeOut,
+		HandTimeOut:               handTimeOut,
+		MaxWaitCountByHandTimeOut: 1,
+	}
+	for _, option := range options {
+		option(opt)
+	}
+	if opt.RecvTimeOut == recvTimeOut {
+		panic("goserver: recvTimeOut option not set")
+	}
+	if opt.SendTimeOut == recvTimeOut {
+		panic("goserver: sendTimeOut option not set")
+	}
+	if opt.HandTimeOut == recvTimeOut {
+		panic("goserver: handTimeOut option not set")
+	}
+	if opt.MaxWaitCountByHandTimeOut < maxWaitCountByHandTimeOut {
+		panic("goserver: The maxWaitCountByHandTimeOut value must be greater than or equal to 1")
+	}
+	return opt
+}
