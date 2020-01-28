@@ -2,6 +2,7 @@ package handle
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/newde36524/goserver"
 )
@@ -15,6 +16,7 @@ type roomHandle struct {
 
 //NewRoomHandle .
 func NewRoomHandle(key string, initcap int64) goserver.Handle {
+	fmt.Println("new room")
 	return &roomHandle{
 		clientMap: make(map[string]goserver.Conn, initcap),
 		ctxKey:    key,

@@ -46,6 +46,7 @@ func main() {
 	server.Use(handle.NewRoomHandle("room", 1024))
 	server.Use(new(customer.LogHandle))
 	server.Use(new(customer.RootHandle))
+	server.Use(handle.NewTraceHandle())
 	server.UseDebug()
 	server.Binding(address)
 	logs.Infof("服务器开始监听...  监听地址:%s", address)
