@@ -13,7 +13,7 @@ import (
 
 const (
 	head     byte   = 0x7E
-	serverIP string = "localhost:12336"
+	serverIP string = "localhost:9000"
 )
 
 //Packet .

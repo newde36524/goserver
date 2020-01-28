@@ -1,6 +1,7 @@
 package goserver
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"runtime/debug"
@@ -52,6 +53,8 @@ func (s *Server) Binding(address string) {
 	}
 	option := initOptions(s.modOption)
 	go func() {
+		ctx, cancle := context.WithCancel(context.Background())
+		defer cancle()
 		defer listener.Close()
 		defer func() {
 			defer recover()
@@ -72,7 +75,7 @@ func (s *Server) Binding(address string) {
 				<-time.After(time.Second)
 				continue
 			}
-			c := NewConn(conn, *option, s.handles)
+			c := NewConn(ctx, conn, *option, s.handles)
 			if s.isDebug {
 				c.UseDebug()
 			}

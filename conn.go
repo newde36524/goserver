@@ -33,7 +33,7 @@ type Conn struct {
 }
 
 //NewConn return a wrap of raw conn
-func NewConn(rwc net.Conn, option ConnOption, hs []Handle) *Conn {
+func NewConn(ctx context.Context, rwc net.Conn, option ConnOption, hs []Handle) *Conn {
 	result := &Conn{
 		rwc:     rwc,
 		option:  option,
@@ -44,7 +44,7 @@ func NewConn(rwc net.Conn, option ConnOption, hs []Handle) *Conn {
 		},
 	}
 	result.valid()
-	result.context, result.cancel = context.WithCancel(context.Background())
+	result.context, result.cancel = context.WithCancel(ctx)
 	return result
 }
 
