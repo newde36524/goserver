@@ -21,6 +21,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"time"
+	"syscall"
 )
 
 //Conn net.Conn proxy object
@@ -126,6 +127,7 @@ func (c Conn) Close(msg ...string) {
 		select {
 		case <-c.context.Done():
 			clientMap.Delete(c.fd)
+			syscall.Close(c.fd)
 			// delete(clientMap, c.fd)
 			c.rwc.SetDeadline(time.Now().Add(time.Second)) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
 			c.rwc.Close()
