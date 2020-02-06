@@ -99,5 +99,6 @@ func (RootHandle) OnPanic(ctx context.Context, conn goserver.Conn, err error, ne
 //OnRecvError .
 func (RootHandle) OnRecvError(ctx context.Context, conn goserver.Conn, err error, next func(context.Context)) {
 	logs.Errorf("%s: 服务器接收数据异常,错误信息:%s", conn.RemoteAddr(), err)
+	conn.Close()
 	next(ctx)
 }

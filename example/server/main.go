@@ -20,12 +20,13 @@ func init() {
 		<-time.After(10 * time.Second)
 		return
 	}
-	go func() {
-		for {
-			fmt.Printf("当前协程数:%d\n", runtime.NumGoroutine())
-			time.Sleep(time.Second)
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		fmt.Printf("当前协程数:%d\n", runtime.NumGoroutine())
+	// 		time.Sleep(time.Second)
+	// 	}
+	// }()
+	fmt.Println(runtime.GOOS)
 }
 
 func main() {
@@ -44,9 +45,9 @@ func main() {
 		logs.Error(err)
 	}
 	server.Use(handle.NewRoomHandle("room", 1024))
-	server.Use(new(customer.LogHandle))
+	// server.Use(new(customer.LogHandle))
 	server.Use(new(customer.RootHandle))
-	server.Use(handle.NewTraceHandle())
+	// server.Use(handle.NewTraceHandle())
 	server.UseDebug()
 	server.Binding(address)
 	logs.Infof("服务器开始监听...  监听地址:%s", address)
