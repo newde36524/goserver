@@ -23,7 +23,7 @@ func (RootHandle) ReadPacket(ctx context.Context, conn goserver.Conn, next func(
 	b := make([]byte, 1024)
 	n, err := conn.Read(b)
 	if err != nil {
-		logs.Error(err)
+		logs.Errorf("%#v", err)
 		//当客户端连接强制中断时,在wsl中err被识别为io.EOF  而在linux和windows中识别为net.Error
 		switch e := err.(type) {
 		case net.Error:
@@ -39,6 +39,7 @@ func (RootHandle) ReadPacket(ctx context.Context, conn goserver.Conn, next func(
 			}
 		}
 	}
+	logs.Info("ReadPacket")
 	p := &goserver.P{
 		Data: b[:n],
 	}
@@ -62,13 +63,7 @@ func (RootHandle) OnMessage(ctx context.Context, conn goserver.Conn, p goserver.
 		data := p.GetBuffer()
 		sendP.SetBuffer(data)
 	}
-	if v, ok := ctx.Value("room").(map[string]goserver.Conn); ok {
-		for _, conn := range v {
-			conn.Write(sendP)
-		}
-	} else {
-		logs.Error("room 获取去连接Map  失败")
-	}
+	conn.Write(sendP)
 	next(ctx)
 }
 

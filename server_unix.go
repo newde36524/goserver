@@ -3,6 +3,7 @@
 package goserver
 
 import (
+	"github.com/issue9/logs"
 	"context"
 	"errors"
 	"fmt"
@@ -11,11 +12,13 @@ import (
 	"runtime/debug"
 	"syscall"
 	"time"
+	"sync"
+	// "math"
 )
 
 const (
 	EPOLLET        = 1 << 31
-	MaxEpollEvents = 32
+	MaxEpollEvents = 1000000
 )
 
 //TCPServer create tcp server
@@ -62,9 +65,8 @@ func (s *Server) UseDebug() {
 	s.isDebug = true
 }
 
-var clientMap map[int]*Conn = make(map[int]*Conn)
-
-
+// var clientMap map[int]Conn = make(map[int]Conn)
+var clientMap = sync.Map{}
 
 //Binding start server
 func (s *Server) Binding(address string) {
@@ -73,7 +75,7 @@ func (s *Server) Binding(address string) {
 		return
 	}
 	option := initOptions(s.modOption)
-	go s.eventLoop()
+	go s.epoll()
 	go s.listen(listener, option)
 }
 
@@ -93,6 +95,7 @@ func(s *Server) listen(listener net.Listener,option *ConnOption) {
 			}
 		}
 	}()
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -100,7 +103,6 @@ func(s *Server) listen(listener net.Listener,option *ConnOption) {
 			<-time.After(time.Second)
 			continue
 		}
-
 		connFd := netConnToConnFD(conn)
 		if err := syscall.EpollCtl(s.epfd, syscall.EPOLL_CTL_ADD, connFd, &syscall.EpollEvent{
 			Events: syscall.EPOLLIN | EPOLLET,
@@ -109,9 +111,18 @@ func(s *Server) listen(listener net.Listener,option *ConnOption) {
 			fmt.Println("epoll_ctl error: ", connFd, err)
 			os.Exit(1)
 		}
-
+		
 		c := NewConn(ctx, conn, connFd, *option, s.handles)
-		clientMap[int(connFd)] = c
+		// c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, c, next) })
+		clientMap.Store(int(connFd), c)
+
+		// if _,ok:=clientMap[int(connFd)];!ok{
+		// 	mu.Lock()
+		// 	if _,ok:=clientMap[int(connFd)];!ok{
+		// 		clientMap[int(connFd)] = c
+		// 	}
+		// 	mu.Unlock()
+		// }
 		if s.isDebug {
 			c.UseDebug()
 		}
@@ -119,8 +130,14 @@ func(s *Server) listen(listener net.Listener,option *ConnOption) {
 	}
 }
 
-
-func (s *Server) eventLoop() {
+func (s *Server) epoll() {
+	defer func() {
+		defer recover()
+		if err := recover(); err != nil {
+			fmt.Println(err)
+			fmt.Println(debug.Stack())
+		}
+	}()
 	const (
 		// ErrEvents represents exceptional events that are not read/write, like socket being closed,
 		// reading/writing from/to a closed socket, etc.
@@ -140,28 +157,28 @@ func (s *Server) eventLoop() {
 		}
 	)
 
-
 	var events [MaxEpollEvents]syscall.EpollEvent //指定一次获取多少个就绪事件
 	for {
 		eventCount, err := syscall.EpollWait(s.epfd, events[:], -1) //获取就绪事件
+		fmt.Println("eventCount")
 		if err != nil {
 			fmt.Println("epoll_wait: ", err)
-			break
+			time.Sleep(time.Second)
+			continue
 		}
 		for i := 0; i < eventCount; i++ { //遍历每个事件
 			event := events[i]
 			if isWriteEvent(event.Events) {
-				fmt.Println("write event",event.Events&OutEvents)
+				fmt.Println("write event", event.Events&OutEvents)
 			}
 			if isReadEvent(event.Events) {
-				fmt.Println("read event",event.Events&InEvents)
-				if conn, ok := clientMap[int(event.Fd)]; ok {
-					conn.react()
-					buf := make([]byte, 1024)
-					n,_:= conn.Read(buf)
-					conn.Write(&P{
-						Data: buf[:n],
-					})
+				if v, ok := clientMap.Load(int(event.Fd)); ok {
+					conn := v.(Conn)
+					pch := <-conn.readPacket(1)
+					if pch != nil {
+						logs.Infof("get one package:%s",string(pch.GetBuffer()))
+						conn.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnMessage(ctx, conn, pch, next) })
+					}
 				}
 			}
 		}

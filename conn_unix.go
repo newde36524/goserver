@@ -21,7 +21,6 @@ import (
 	"runtime/debug"
 	"strings"
 	"time"
-	"syscall"
 )
 
 //Conn net.Conn proxy object
@@ -37,8 +36,8 @@ type Conn struct {
 }
 
 //NewConn return a wrap of raw conn
-func NewConn(ctx context.Context, rwc net.Conn, fd int, option ConnOption, hs []Handle) *Conn {
-	result := &Conn{
+func NewConn(ctx context.Context, rwc net.Conn, fd int, option ConnOption, hs []Handle) Conn {
+	result := Conn{
 		rwc:     rwc,
 		option:  option,
 		fd:      fd,
@@ -96,14 +95,6 @@ func(c Conn) react() {
 //Read read a data frame from connection
 func (c Conn) Read(b []byte) (n int, err error) {
 	c.rwc.SetReadDeadline(time.Now().Add(c.option.RecvTimeOut))
-
-	n, err = syscall.Read(c.fd, b)
-	if n == 0 || err != nil {
-		if err == syscall.EAGAIN {
-			return 0, nil
-		}
-	}
-
 	n, err = c.rwc.Read(b)
 	if err != nil {
 		c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnRecvError(ctx, c, err, next) })
@@ -134,37 +125,11 @@ func (c Conn) Close(msg ...string) {
 	defer func() {
 		select {
 		case <-c.context.Done():
-			delete(clientMap, c.fd)
+			clientMap.Delete(c.fd)
+			// delete(clientMap, c.fd)
 			c.rwc.SetDeadline(time.Now().Add(time.Second)) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
 			c.rwc.Close()
 			c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnClose(ctx, c.state, next) })
-			// switch v := c.rwc.(type) {
-			// case *net.TCPConn:
-			// 	v.SetKeepAlive(false)
-			// 	f, err := v.File()
-			// 	if err != nil {
-			// 		c.option.Logger.Errorf("goserver.Conn.Close: %s", err)
-			// 	}
-			// 	syscall.Shutdown(syscall.Handle(f.Fd()), 0)
-			// case *net.UDPConn:
-			// 	f, err := v.File()
-			// 	if err != nil {
-			// 		c.option.Logger.Errorf("goserver.Conn.Close: %s", err)
-			// 	}
-			// 	syscall.Shutdown(syscall.Handle(f.Fd()), 0)
-			// case *net.UnixConn:
-			// 	f, err := v.File()
-			// 	if err != nil {
-			// 		c.option.Logger.Errorf("goserver.Conn.Close: %s", err)
-			// 	}
-			// 	syscall.Shutdown(syscall.Handle(f.Fd()), 0)
-			// case *net.IPConn:
-			// 	f, err := v.File()
-			// 	if err != nil {
-			// 		c.option.Logger.Errorf("goserver.Conn.Close: %s", err)
-			// 	}
-			// 	syscall.Shutdown(syscall.Handle(f.Fd()), 0)
-			// }
 		}
 	}()
 	c.cancel()
@@ -178,27 +143,25 @@ func (c Conn) Close(msg ...string) {
 //readPacket read a packet
 func (c Conn) readPacket(size int) <-chan Packet {
 	result := make(chan Packet, size)
-	go c.safeFn(func() {
+	c.safeFn(func() {
 		defer close(result)
-		for {
-			var p Packet
-			c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) {
-				temp := h.ReadPacket(ctx, c, next)
-				//防止内部调用next()方法重复覆盖p的值
-				//当前机制保证在管道处理流程中,只要有一个handle的ReadPacket方法返回值不为nil时才有效,之后无效
-				if temp != nil && p != nil {
-					panic("goserver.Conn.readPacket: 禁止在管道链路中重复读取生成Packet,在管道中读取数据帧,只能有一个管道返回Packet,其余只能返回nil")
-				}
-				if temp != nil && p == nil {
-					p = temp
-				}
-			})
-			select {
-			case <-c.context.Done():
-				return
-			case result <- p:
-				c.state.RecvPacketCount++
+		var p Packet
+		c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) {
+			temp := h.ReadPacket(ctx, c, next)
+			//防止内部调用next()方法重复覆盖p的值
+			//当前机制保证在管道处理流程中,只要有一个handle的ReadPacket方法返回值不为nil时才有效,之后无效
+			if temp != nil && p != nil {
+				panic("goserver.Conn.readPacket: 禁止在管道链路中重复读取生成Packet,在管道中读取数据帧,只能有一个管道返回Packet,其余只能返回nil")
 			}
+			if temp != nil && p == nil {
+				p = temp
+			}
+		})
+		select {
+		case <-c.context.Done():
+			return
+		case result <- p:
+			c.state.RecvPacketCount++
 		}
 	})
 	return result
