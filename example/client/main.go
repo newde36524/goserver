@@ -30,7 +30,7 @@ func main() {
 			fmt.Println(e)
 		}
 	}()
-	for i := 10000; i < 10003; i++ {
+	for i := 10000; i < 31003; i++ {
 		temp := i
 		connection, err := CreateTCPConn(serverIP)
 		if err != nil {
@@ -45,13 +45,13 @@ func main() {
 			end := "BBBBBBBBB"
 			pData := []byte(start + strconv.Itoa(num) + end)
 			SendTCPCMD(connection, Packet{head, msgID, cmdType, pData})
-			ReceivTCPCMD(connection)
+			ReceivTCPCMD(connection, 0)
 			cmdType = byte(0x01)
 			count := 0
 			for {
 				pData = []byte(fmt.Sprintf("Client:%d,心跳:第%d次心跳", num, count))
 				SendTCPCMD(conn, Packet{head, msgID, cmdType, pData})
-				ReceivTCPCMD(connection)
+				ReceivTCPCMD(connection,count)
 				time.Sleep(1 * time.Second)
 				count++
 			}
@@ -114,11 +114,16 @@ func SendTCPCMD(connection net.Conn, packet Packet) error {
 }
 
 //ReceivTCPCMD .
-func ReceivTCPCMD(connection net.Conn) error {
+func ReceivTCPCMD(connection net.Conn,count int) error {
 	slice := make([]byte, 5120)
 	len, err := connection.Read(slice)
+	if len == 0 {
+		return nil
+	}
 	p, err := GetDeserializationPacket(slice[:len])
-	fmt.Println(string(p.pData))
+	if count % 100 == 0 {
+		fmt.Println(string(p.pData))
+	}
 	return err
 }
 

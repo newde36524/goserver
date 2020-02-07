@@ -20,13 +20,19 @@ func init() {
 		<-time.After(10 * time.Second)
 		return
 	}
-	// go func() {
-	// 	for {
-	// 		fmt.Printf("当前协程数:%d\n", runtime.NumGoroutine())
-	// 		time.Sleep(time.Second)
-	// 	}
-	// }()
+	go func() {
+		for {
+			fmt.Printf("当前协程数:%d\n", runtime.NumGoroutine())
+			time.Sleep(time.Second)
+		}
+	}()
 	fmt.Println(runtime.GOOS)
+	// var rLimit syscall.Rlimit
+	// rLimit.Cur = 200000
+	// rLimit.Max = 200000
+	// if err := syscall.Setrlimit(syscall.RLIMIT_NOFILE, &rLimit); err != nil {
+	// 	logs.Error(err)
+	// }
 }
 
 func main() {

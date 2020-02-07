@@ -10,11 +10,6 @@ import (
 	"time"
 )
 
-//TCPServer create tcp server
-func TCPServer(modOption ModOption) (*Server, error) {
-	return New("tcp", modOption)
-}
-
 //Server tcp服务器
 type Server struct {
 	isDebug   bool      //是否开始debug日志
@@ -35,16 +30,6 @@ func New(network string, modOption ModOption) (srv *Server, err error) {
 		modOption: modOption,
 	}
 	return
-}
-
-//Use middleware
-func (s *Server) Use(h Handle) {
-	s.handles = append(s.handles, h)
-}
-
-//UseDebug 开启debug日志
-func (s *Server) UseDebug() {
-	s.isDebug = true
 }
 
 //Binding start server

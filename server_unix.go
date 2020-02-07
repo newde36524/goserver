@@ -3,7 +3,6 @@
 package goserver
 
 import (
-	"github.com/issue9/logs"
 	"context"
 	"errors"
 	"fmt"
@@ -20,11 +19,6 @@ const (
 	EPOLLET        = 1 << 31
 	MaxEpollEvents = 1000000
 )
-
-//TCPServer create tcp server
-func TCPServer(modOption ModOption) (*Server, error) {
-	return New("tcp", modOption)
-}
 
 //Server tcp服务器
 type Server struct {
@@ -53,16 +47,6 @@ func New(network string, modOption ModOption) (srv *Server, err error) {
 		epfd:      epfd,
 	}
 	return
-}
-
-//Use middleware
-func (s *Server) Use(h Handle) {
-	s.handles = append(s.handles, h)
-}
-
-//UseDebug 开启debug日志
-func (s *Server) UseDebug() {
-	s.isDebug = true
 }
 
 // var clientMap map[int]Conn = make(map[int]Conn)
@@ -109,20 +93,13 @@ func(s *Server) listen(listener net.Listener,option *ConnOption) {
 			Fd:     int32(connFd),
 		}); err != nil { //给epollFD 增加一个连接FD
 			fmt.Println("epoll_ctl error: ", connFd, err)
-			os.Exit(1)
+			continue
 		}
 		
-		c := NewConn(ctx, conn, connFd, *option, s.handles)
-		// c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, c, next) })
+		c := NewConn(ctx, conn, *option, s.handles)
+		c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, c, next) })
 		clientMap.Store(int(connFd), c)
 
-		// if _,ok:=clientMap[int(connFd)];!ok{
-		// 	mu.Lock()
-		// 	if _,ok:=clientMap[int(connFd)];!ok{
-		// 		clientMap[int(connFd)] = c
-		// 	}
-		// 	mu.Unlock()
-		// }
 		if s.isDebug {
 			c.UseDebug()
 		}
@@ -138,29 +115,10 @@ func (s *Server) epoll() {
 			fmt.Println(debug.Stack())
 		}
 	}()
-	const (
-		// ErrEvents represents exceptional events that are not read/write, like socket being closed,
-		// reading/writing from/to a closed socket, etc.
-		ErrEvents = syscall.EPOLLERR | syscall.EPOLLHUP | syscall.EPOLLRDHUP
-		// OutEvents combines EPOLLOUT event and some exceptional events.
-		OutEvents = ErrEvents | syscall.EPOLLOUT
-		// InEvents combines EPOLLIN/EPOLLPRI events and some exceptional events.
-		InEvents = ErrEvents | syscall.EPOLLIN | syscall.EPOLLPRI
-	)
-
-	var (
-		isReadEvent = func(events uint32) bool {
-			return events&InEvents == 1
-		}
-		isWriteEvent = func(events uint32) bool {
-			return events&OutEvents == 1
-		}
-	)
-
 	var events [MaxEpollEvents]syscall.EpollEvent //指定一次获取多少个就绪事件
 	for {
 		eventCount, err := syscall.EpollWait(s.epfd, events[:], -1) //获取就绪事件
-		fmt.Println("eventCount")
+		fmt.Println("EpollWait")
 		if err != nil {
 			fmt.Println("epoll_wait: ", err)
 			time.Sleep(time.Second)
@@ -168,18 +126,9 @@ func (s *Server) epoll() {
 		}
 		for i := 0; i < eventCount; i++ { //遍历每个事件
 			event := events[i]
-			if isWriteEvent(event.Events) {
-				fmt.Println("write event", event.Events&OutEvents)
-			}
-			if isReadEvent(event.Events) {
-				if v, ok := clientMap.Load(int(event.Fd)); ok {
-					conn := v.(Conn)
-					pch := <-conn.readPacket(1)
-					if pch != nil {
-						logs.Infof("get one package:%s",string(pch.GetBuffer()))
-						conn.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnMessage(ctx, conn, pch, next) })
-					}
-				}
+			if v, ok := clientMap.Load(int(event.Fd)); ok {
+				conn := v.(Conn)
+				conn.reactSrvEvent(event)
 			}
 		}
 	}

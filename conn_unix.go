@@ -17,134 +17,43 @@ package goserver
 import (
 	"context"
 	"fmt"
-	"net"
-	"runtime/debug"
-	"strings"
-	"time"
 	"syscall"
 )
 
-//Conn net.Conn proxy object
-type Conn struct {
-	rwc     net.Conn        //row connection
-	option  ConnOption      //connection option object
-	state   *ConnState      //connection state
-	context context.Context //global context
-	cancel  func()          //global context cancel function
-	isDebug bool            //is open inner debug message flag
-	handles []Handle        //connection handle pipeline
-	fd      int
-}
+//react 服务端建立的连接处理方法
+func(c Conn) reactSrvEvent(event syscall.EpollEvent) {
+	const (
+		// ErrEvents represents exceptional events that are not read/write, like socket being closed,
+		// reading/writing from/to a closed socket, etc.
+		ErrEvents = syscall.EPOLLERR | syscall.EPOLLHUP | syscall.EPOLLRDHUP
+		// OutEvents combines EPOLLOUT event and some exceptional events.
+		OutEvents = ErrEvents | syscall.EPOLLOUT
+		// InEvents combines EPOLLIN/EPOLLPRI events and some exceptional events.
+		InEvents = ErrEvents | syscall.EPOLLIN | syscall.EPOLLPRI
+	)
 
-//NewConn return a wrap of raw conn
-func NewConn(ctx context.Context, rwc net.Conn, fd int, option ConnOption, hs []Handle) Conn {
-	result := Conn{
-		rwc:     rwc,
-		option:  option,
-		fd:      fd,
-		handles: hs,
-		state: &ConnState{
-			ActiveTime: time.Now(),
-			RemoteAddr: rwc.RemoteAddr().String(),
-		},
+	var (
+		isReadEvent = func(events uint32) bool {
+			return events&InEvents == 1
+		}
+		isWriteEvent = func(events uint32) bool {
+			return events&OutEvents == 1
+		}
+	)
+	if isWriteEvent(event.Events) {
+		fmt.Println("write event", event.Events&OutEvents)
 	}
-	result.valid()
-	result.context, result.cancel = context.WithCancel(ctx)
-	return result
-}
-
-func (c Conn) valid() {
-	if c.option.MaxWaitCountByHandTimeOut <= 0 {
-		panic("goserver.Conn.valid: option.MaxWaitCountByHandTimeOut不允许设置为0,这会导致无法处理数据包")
+	if isReadEvent(event.Events) {
+		pch := <-c.readPacketOne()
+		if pch != nil {
+			c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnMessage(ctx, c, pch, next) })
+		}
 	}
-}
-
-//UseDebug open inner debug log
-func (c Conn) UseDebug() {
-	if c.isDebug = c.option.Logger != nil; !c.isDebug {
-		fmt.Println("goserver.Conn.UseDebug: c.option.Logger is nil")
-	}
-}
-
-//RemoteAddr get remote client's ip address
-func (c Conn) RemoteAddr() string {
-	return c.rwc.RemoteAddr().String()
-}
-
-//LocalAddr get host ip address
-func (c Conn) LocalAddr() string {
-	return c.rwc.LocalAddr().String()
-}
-
-//Raw get row connection
-func (c Conn) Raw() net.Conn {
-	return c.rwc
-}
-
-//Run start run server and receive and handle and send packet
-func (c Conn) Run() {
-	go c.safeFn(func() {
-		c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, c, next) })
-		c.recv(1)
-	})
-}
-
-func(c Conn) react() {
-
 } 
 
-//Read read a data frame from connection
-func (c Conn) Read(b []byte) (n int, err error) {
-	c.rwc.SetReadDeadline(time.Now().Add(c.option.RecvTimeOut))
-	n, err = c.rwc.Read(b)
-	if err != nil {
-		c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnRecvError(ctx, c, err, next) })
-	}
-	return
-}
-
-//Write send a packet to remote connection
-func (c Conn) Write(packet Packet) (err error) {
-	if packet == nil {
-		if c.isDebug {
-			c.option.Logger.Debugf("%s: goserver.Conn.Write: packet is nil,do nothing", c.RemoteAddr())
-		}
-		return
-	}
-	sendData, err := packet.Serialize()
-	if err != nil {
-		return
-	}
-	c.rwc.SetWriteDeadline(time.Now().Add(c.option.SendTimeOut))
-	_, err = c.rwc.Write(sendData)
-	c.state.SendPacketCount++
-	return
-}
-
-//Close close connection
-func (c Conn) Close(msg ...string) {
-	defer func() {
-		select {
-		case <-c.context.Done():
-			clientMap.Delete(c.fd)
-			syscall.Close(c.fd)
-			// delete(clientMap, c.fd)
-			c.rwc.SetDeadline(time.Now().Add(time.Second)) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
-			c.rwc.Close()
-			c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnClose(ctx, c.state, next) })
-		}
-	}()
-	c.cancel()
-	c.state.Message = strings.Join(msg, ",")
-	c.state.ComplateTime = time.Now()
-
-	// runtime.GC()         //强制GC      待定可能有问题
-	// debug.FreeOSMemory() //强制释放内存 待定可能有问题
-}
-
-//readPacket read a packet
-func (c Conn) readPacket(size int) <-chan Packet {
-	result := make(chan Packet, size)
+//readPacketOne .
+func (c Conn) readPacketOne() <-chan Packet {
+	result := make(chan Packet, 1)
 	c.safeFn(func() {
 		defer close(result)
 		var p Packet
@@ -167,96 +76,4 @@ func (c Conn) readPacket(size int) <-chan Packet {
 		}
 	})
 	return result
-}
-
-//recv create a receive only packet channel
-func (c Conn) recv(size int) {
-	go c.safeFn(func() {
-		defer func() {
-			if c.isDebug {
-				c.option.Logger.Debugf("%s: goserver.Conn.recv: recv goruntinue exit", c.RemoteAddr())
-			}
-		}()
-		recvTimer := time.NewTimer(c.option.RecvTimeOut)
-		defer recvTimer.Stop()
-		handTimer := time.NewTimer(c.option.HandTimeOut)
-		defer handTimer.Stop()
-		pch := c.readPacket(size)
-		hch := make(chan struct{}, c.option.MaxWaitCountByHandTimeOut) //防止OnMessage协程堆积
-		defer close(hch)
-		for c.rwc != nil {
-			recvTimer.Reset(c.option.RecvTimeOut)
-			select {
-			case <-c.context.Done():
-				return
-			case <-recvTimer.C:
-				c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnRecvTimeOut(ctx, c, next) })
-			case p := <-pch:
-				select {
-				case <-c.context.Done():
-					return
-				case hch <- struct{}{}:
-					sign := make(chan struct{})
-					go func() {
-						defer func() {
-							select {
-							case <-sign:
-							default:
-								close(sign)
-							}
-						}()
-						c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnMessage(ctx, c, p, next) })
-						select {
-						case <-c.context.Done():
-							return
-						case <-hch:
-						}
-					}()
-					handTimer.Reset(c.option.HandTimeOut)
-					select {
-					case <-sign:
-					case <-handTimer.C:
-						c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnHandTimeOut(ctx, c, next) })
-					}
-				}
-			}
-		}
-	})
-}
-
-//pipe pipeline provider
-func (c Conn) pipe(fn func(Handle, context.Context, func(context.Context))) {
-	index := 0
-	var next func(context.Context)
-	next = func(ctx context.Context) {
-		defer func() {
-			if err := recover(); err != nil {
-				if c.option.Logger != nil {
-					c.option.Logger.Errorf("%s: goserver.Conn.Next: pipeline excute error: %s", c.RemoteAddr(), err)
-					c.option.Logger.Error(string(debug.Stack()))
-				}
-			}
-		}()
-		if index < len(c.handles) {
-			index++
-			fn(c.handles[index-1], ctx, next)
-		}
-	}
-	next(c.context)
-	return
-}
-
-//safeFn proxy agent,used to safe invoke and recover panic
-func (c Conn) safeFn(fn func()) {
-	defer func() {
-		if err := recover(); err != nil {
-			defer recover()
-			c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnPanic(ctx, c, err.(error), next) })
-			if c.option.Logger != nil {
-				c.option.Logger.Errorf("goserver.Conn.safeFn: %s", err)
-				c.option.Logger.Errorf("goserver.Conn.safeFn: %s", string(debug.Stack()))
-			}
-		}
-	}()
-	fn()
 }
