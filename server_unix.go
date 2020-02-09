@@ -157,18 +157,16 @@ func netConnToConnFD(conn net.Conn) (connFD int, err error) {
 				connFD = int(fd)
 			})
 			return connFD, nil
-		} else {
-			return 0, err
 		}
 	case *net.UDPConn:
 		if raw, err := v.SyscallConn(); err == nil {
 			raw.Control(func(fd uintptr) {
 				connFD = int(fd)
 			})
-		} else {
-			return 0, err
+			return connFD, nil
 		}
 	default:
+		return 0, errors.New("type can not get fd")
 	}
-	return 0, errors.New("type can not get fd")
+	return
 }
