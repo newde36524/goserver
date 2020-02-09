@@ -144,7 +144,7 @@ func netListenerToListenFD(listener net.Listener) (listenFD int32, err error) {
 			return 0, err
 		}
 	default:
-		err = errors.New("type can not get fd")
+		return 0, errors.New("type can not get fd")
 	}
 	return
 }
