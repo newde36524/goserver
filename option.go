@@ -9,6 +9,8 @@ type ConnOption struct {
 	HandTimeOut               time.Duration //处理消息超时时间
 	Logger                    Logger        //日志打印对象
 	MaxWaitCountByHandTimeOut int           //最大处理消息协程堆积数量
+	MaxGopollTasks            int           //协程池并发数量
+	MaxGopollExpire           time.Duration //协程池声明周期
 }
 
 //ModOption .
@@ -20,12 +22,16 @@ func initOptions(options ...ModOption) *ConnOption {
 		sendTimeOut               time.Duration
 		handTimeOut               time.Duration
 		maxWaitCountByHandTimeOut int
+		MaxGopollTasks            = 10
+		MaxGopollExpire           = 10 * time.Second
 	)
 	opt := &ConnOption{
 		RecvTimeOut:               recvTimeOut,
 		SendTimeOut:               sendTimeOut,
 		HandTimeOut:               handTimeOut,
 		MaxWaitCountByHandTimeOut: 1,
+		MaxGopollTasks:            MaxGopollTasks,
+		MaxGopollExpire:           MaxGopollExpire,
 	}
 	for _, option := range options {
 		option(opt)

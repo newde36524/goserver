@@ -16,40 +16,49 @@ package goserver
 */
 import (
 	"context"
-	"fmt"
-	"syscall"
+	"net"
+	"time"
 )
 
-//react 服务端建立的连接处理方法
-func(c Conn) reactSrvEvent(event syscall.EpollEvent) {
-	const (
-		// ErrEvents represents exceptional events that are not read/write, like socket being closed,
-		// reading/writing from/to a closed socket, etc.
-		ErrEvents = syscall.EPOLLERR | syscall.EPOLLHUP | syscall.EPOLLRDHUP
-		// OutEvents combines EPOLLOUT event and some exceptional events.
-		OutEvents = ErrEvents | syscall.EPOLLOUT
-		// InEvents combines EPOLLIN/EPOLLPRI events and some exceptional events.
-		InEvents = ErrEvents | syscall.EPOLLIN | syscall.EPOLLPRI
-	)
+//Conn net.Conn proxy object
+type Conn struct {
+	rwc     net.Conn        //row connection
+	option  ConnOption      //connection option object
+	state   *ConnState      //connection state
+	context context.Context //global context
+	cancel  func()          //global context cancel function
+	isDebug bool            //is open inner debug message flag
+	pipe    Pipe            //connection handle pipeline
+}
 
-	var (
-		isReadEvent = func(events uint32) bool {
-			return events&InEvents == 1
-		}
-		isWriteEvent = func(events uint32) bool {
-			return events&OutEvents == 1
-		}
-	)
-	if isWriteEvent(event.Events) {
-		fmt.Println("write event", event.Events&OutEvents)
+//NewConn return a wrap of raw conn
+func NewConn(ctx context.Context, rwc net.Conn, option ConnOption, hs []Handle) Conn {
+	result := Conn{
+		rwc:    rwc,
+		option: option,
+		state: &ConnState{
+			ActiveTime: time.Now(),
+			RemoteAddr: rwc.RemoteAddr().String(),
+		},
 	}
-	if isReadEvent(event.Events) {
-		pch := <-c.readPacketOne()
-		if pch != nil {
-			c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnMessage(ctx, c, pch, next) })
-		}
+	result.valid()
+	result.context, result.cancel = context.WithCancel(ctx)
+	result.pipe = NewPipe(result.context, hs)
+	return result
+}
+
+//OnWriteable .
+func (c Conn) OnWriteable() {
+	c.option.Logger.Info("conn_unix.go: conn OnWriteable")
+}
+
+//OnReadable 服务端建立的连接处理方法
+func (c Conn) OnReadable() {
+	pch := <-c.readPacketOne()
+	if pch != nil {
+		c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnMessage(ctx, c, pch, next) })
 	}
-} 
+}
 
 //readPacketOne .
 func (c Conn) readPacketOne() <-chan Packet {
@@ -57,7 +66,7 @@ func (c Conn) readPacketOne() <-chan Packet {
 	c.safeFn(func() {
 		defer close(result)
 		var p Packet
-		c.pipe(func(h Handle, ctx context.Context, next func(context.Context)) {
+		c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) {
 			temp := h.ReadPacket(ctx, c, next)
 			//防止内部调用next()方法重复覆盖p的值
 			//当前机制保证在管道处理流程中,只要有一个handle的ReadPacket方法返回值不为nil时才有效,之后无效

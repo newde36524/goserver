@@ -129,7 +129,7 @@ func (h *CoreHandle) OnHandTimeOut(ctx context.Context, conn Conn, next func(con
 
 //EmptyHandle .
 type EmptyHandle struct {
-	handle Handle
+	// Handle
 }
 
 //ReadPacket .
@@ -167,7 +167,7 @@ func (h *EmptyHandle) OnHandTimeOut(ctx context.Context, conn Conn, next func(co
 
 //BaseHandle .
 type BaseHandle struct {
-	Handle
+	// Handle
 }
 
 //ReadPacket .

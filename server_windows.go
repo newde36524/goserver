@@ -18,20 +18,6 @@ type Server struct {
 	modOption ModOption //连接配置项
 }
 
-//New new server
-//@network network 类型，具体参照ListenUDP ListenTCP等
-//@addr local address
-//@opt connection options
-func New(network string, modOption ModOption) (srv *Server, err error) {
-	// 根据服务器开启多CPU功能
-	// runtime.GOMAXPROCS(runtime.NumCPU())
-	srv = &Server{
-		network:   network,
-		modOption: modOption,
-	}
-	return
-}
-
 //Binding start server
 func (s *Server) Binding(address string) {
 	listener, err := net.Listen(s.network, address)

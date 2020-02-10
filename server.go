@@ -14,3 +14,17 @@ func (s *Server) Use(h Handle) {
 func (s *Server) UseDebug() {
 	s.isDebug = true
 }
+
+//New new server
+//@network network 类型，具体参照ListenUDP ListenTCP等
+//@addr local address
+//@opt connection options
+func New(network string, modOption ModOption) (srv *Server, err error) {
+	// 根据服务器开启多CPU功能
+	// runtime.GOMAXPROCS(runtime.NumCPU())
+	srv = &Server{
+		network:   network,
+		modOption: modOption,
+	}
+	return
+}

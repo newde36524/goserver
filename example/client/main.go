@@ -30,7 +30,7 @@ func main() {
 			fmt.Println(e)
 		}
 	}()
-	for i := 10000; i < 10003; i++ {
+	for i := 10000; i < 10451; i++ {
 		temp := i
 		connection, err := CreateTCPConn(serverIP)
 		if err != nil {
@@ -121,7 +121,7 @@ func ReceivTCPCMD(connection net.Conn, count int) error {
 		return nil
 	}
 	p, err := GetDeserializationPacket(slice[:len])
-	if count%100 == 0 {
+	{
 		fmt.Println(string(p.pData))
 	}
 	return err
