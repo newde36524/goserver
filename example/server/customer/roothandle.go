@@ -57,8 +57,8 @@ func (RootHandle) OnConnection(ctx context.Context, conn goserver.Conn, next fun
 //OnMessage .
 func (RootHandle) OnMessage(ctx context.Context, conn goserver.Conn, p goserver.Packet, next func(context.Context)) {
 	defer next(ctx)
-	logs.Info(ctx.Value("logger"))
-	logs.Infof("%s:我好像收到了不知名快递哦", conn.RemoteAddr())
+	// logs.Info(ctx.Value("logger"))
+	logs.Infof("%s:获取客户端信息: %s", conn.RemoteAddr(), string(p.GetBuffer()))
 	conn.Write(p)
 }
 

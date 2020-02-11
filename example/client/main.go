@@ -30,7 +30,7 @@ func main() {
 			fmt.Println(e)
 		}
 	}()
-	for i := 10000; i < 10451; i++ {
+	for i := 10000; i < 20010; i++ {
 		temp := i
 		connection, err := CreateTCPConn(serverIP)
 		if err != nil {

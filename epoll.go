@@ -1,3 +1,5 @@
+// +build linux
+
 package goserver
 
 import (
@@ -5,16 +7,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-)
-
-const (
-	// ErrEvents represents exceptional events that are not read/write, like socket being closed,
-	// reading/writing from/to a closed socket, etc.
-	ErrEvents = syscall.EPOLLERR | syscall.EPOLLHUP | syscall.EPOLLRDHUP
-	// OutEvents combines EPOLLOUT event and some exceptional events.
-	OutEvents = ErrEvents | syscall.EPOLLOUT
-	// InEvents combines EPOLLIN/EPOLLPRI events and some exceptional events.
-	InEvents = ErrEvents | syscall.EPOLLIN | syscall.EPOLLPRI
 )
 
 type (
@@ -57,8 +49,22 @@ func (e *epoll) Register(fd int32, eventHandle eventHandle) error {
 	return nil
 }
 
+//Remove .
+func (e *epoll) Remove(fd int32) {
+	e.fdMap.Delete(fd)
+}
+
 //Polling .
 func (e *epoll) Polling() {
+	const (
+		// ErrEvents represents exceptional events that are not read/write, like socket being closed,
+		// reading/writing from/to a closed socket, etc.
+		ErrEvents = syscall.EPOLLERR | syscall.EPOLLHUP | syscall.EPOLLRDHUP
+		// OutEvents combines EPOLLOUT event and some exceptional events.
+		OutEvents = ErrEvents | syscall.EPOLLOUT
+		// InEvents combines EPOLLIN/EPOLLPRI events and some exceptional events.
+		InEvents = ErrEvents | syscall.EPOLLIN | syscall.EPOLLPRI
+	)
 	var (
 		isReadEvent = func(events uint32) bool {
 			return events&InEvents == 1
@@ -67,8 +73,9 @@ func (e *epoll) Polling() {
 			return events&OutEvents == 1
 		}
 	)
+
 	for {
-		eventCount, err := syscall.EpollWait(e.epfd, e.events, -1) //获取就绪事件
+		eventCount, err := syscall.EpollWait(e.epfd, e.events, -1) //获取就绪事件 单位:毫秒 1000毫秒=1秒，-1时无限等待
 		if err != nil {
 			fmt.Println(err)
 			continue
@@ -84,7 +91,7 @@ func (e *epoll) Polling() {
 					e.gopoll.Schedule(evh.OnReadable)
 				}
 			} else {
-				fmt.Println("no ", event.Fd)
+				fmt.Println("epoll.Polling: no ", event.Fd)
 			}
 		}
 	}
