@@ -21,6 +21,32 @@ import (
 	"time"
 )
 
+//Conn net.Conn proxy object
+type Conn struct {
+	rwc     net.Conn        //row connection
+	option  ConnOption      //connection option object
+	state   *ConnState      //connection state
+	ctx     context.Context //global context
+	cancel  func()          //global context cancel function
+	isDebug bool            //is open inner debug message flag
+	pipe    Pipe            //connection handle pipeline
+}
+
+//NewConn return a wrap of raw conn
+func NewConn(ctx context.Context, rwc net.Conn, option ConnOption) Conn {
+	c := Conn{
+		rwc:    rwc,
+		option: option,
+		state: &ConnState{
+			ActiveTime: time.Now(),
+			RemoteAddr: rwc.RemoteAddr().String(),
+		},
+	}
+	c.valid()
+	c.ctx, c.cancel = context.WithCancel(ctx)
+	return c
+}
+
 func (c Conn) valid() {
 	if c.option.MaxWaitCountByHandTimeOut <= 0 {
 		panic("goserver.Conn.valid: option.MaxWaitCountByHandTimeOut不允许设置为0,这会导致无法处理数据包")
@@ -28,10 +54,23 @@ func (c Conn) valid() {
 }
 
 //UseDebug open inner debug log
-func (c Conn) UseDebug() {
+func (c *Conn) UseDebug() {
 	if c.isDebug = c.option.Logger != nil; !c.isDebug {
 		fmt.Println("goserver.Conn.UseDebug: c.option.Logger is nil")
 	}
+}
+
+//UsePipe .
+//注意这里的类型是指针，如果取值类型，由于值拷贝，导致外部的连接对象无法读取存进来的pipe，因为他被赋值给拷贝出来的新Conn实例了
+//这里引起的思考:如果结构体方法不需要结构体指针就取 值类型方法，否则就选指针方法
+func (c *Conn) UsePipe(pipe ...Pipe) Pipe {
+	if len(pipe) != 0 {
+		c.pipe = pipe[0]
+	}
+	if c.pipe == nil {
+		c.pipe = NewPipe(c.ctx)
+	}
+	return c.pipe
 }
 
 //RemoteAddr get remote client's ip address
@@ -89,7 +128,7 @@ func (c Conn) Write(packet Packet) (err error) {
 func (c Conn) Close(msg ...string) {
 	defer func() {
 		select {
-		case <-c.context.Done():
+		case <-c.ctx.Done():
 			c.rwc.SetDeadline(time.Now().Add(time.Second)) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
 			c.rwc.Close()
 			c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnClose(ctx, c.state, next) })
@@ -149,7 +188,7 @@ func (c Conn) readPacket(size int) <-chan Packet {
 				}
 			})
 			select {
-			case <-c.context.Done():
+			case <-c.ctx.Done():
 				return
 			case result <- p:
 				c.state.RecvPacketCount++
@@ -177,13 +216,13 @@ func (c Conn) recv(size int) {
 		for c.rwc != nil {
 			recvTimer.Reset(c.option.RecvTimeOut)
 			select {
-			case <-c.context.Done():
+			case <-c.ctx.Done():
 				return
 			case <-recvTimer.C:
 				c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnRecvTimeOut(ctx, c, next) })
 			case p := <-pch:
 				select {
-				case <-c.context.Done():
+				case <-c.ctx.Done():
 					return
 				case hch <- struct{}{}:
 					sign := make(chan struct{})
@@ -197,7 +236,7 @@ func (c Conn) recv(size int) {
 						}()
 						c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnMessage(ctx, c, p, next) })
 						select {
-						case <-c.context.Done():
+						case <-c.ctx.Done():
 							return
 						case <-hch:
 						}

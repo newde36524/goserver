@@ -2,50 +2,9 @@
 
 package goserver
 
-/*
-工作协程：
-	1.数据接收协程
-持久channel：
-	1.recvChan 接收信道
-短期协程创建时机:
-	1.每次调用readPacket方法读取数据帧时
-	2.
-框架现存的问题:
-	1.消息前后的关联处理不方便 20190914
-	2.代码比较粗糙 20190914
-*/
 import (
 	"context"
-	"net"
-	"time"
 )
-
-//Conn net.Conn proxy object
-type Conn struct {
-	rwc     net.Conn        //row connection
-	option  ConnOption      //connection option object
-	state   *ConnState      //connection state
-	context context.Context //global context
-	cancel  func()          //global context cancel function
-	isDebug bool            //is open inner debug message flag
-	pipe    Pipe            //connection handle pipeline
-}
-
-//NewConn return a wrap of raw conn
-func NewConn(ctx context.Context, rwc net.Conn, option ConnOption, hs []Handle) Conn {
-	result := Conn{
-		rwc:    rwc,
-		option: option,
-		state: &ConnState{
-			ActiveTime: time.Now(),
-			RemoteAddr: rwc.RemoteAddr().String(),
-		},
-	}
-	result.valid()
-	result.context, result.cancel = context.WithCancel(ctx)
-	result.pipe = NewPipe(result.context, hs)
-	return result
-}
 
 //OnWriteable .
 func (c Conn) OnWriteable() {
@@ -78,7 +37,7 @@ func (c Conn) readPacketOne() <-chan Packet {
 			}
 		})
 		select {
-		case <-c.context.Done():
+		case <-c.ctx.Done():
 			return
 		case result <- p:
 			c.state.RecvPacketCount++

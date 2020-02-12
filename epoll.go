@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sync"
 	"syscall"
-	"time"
 )
 
 type (
@@ -20,12 +19,12 @@ type (
 		epfd   int
 		events []syscall.EpollEvent
 		fdMap  sync.Map
-		gopoll *GoPoll
+		gopool *GoPool
 	}
 )
 
 //NewEpoll .
-func NewEpoll(maxEpollEvents, maxGopollTasks int, maxGopollExpire time.Duration) *epoll {
+func NewEpoll(maxEpollEvents int, gopool *GoPool) *epoll {
 	epfd, err := syscall.EpollCreate1(0)
 	if err != nil {
 		panic(err)
@@ -33,19 +32,19 @@ func NewEpoll(maxEpollEvents, maxGopollTasks int, maxGopollExpire time.Duration)
 	return &epoll{
 		epfd:   epfd,
 		events: make([]syscall.EpollEvent, maxEpollEvents), //指定一次获取多少个就绪事件
-		gopoll: NewGoPoll(maxGopollTasks, maxGopollExpire), //指定协程池容量
+		gopool: gopool,                                     //指定协程池容量
 	}
 }
 
 //Register .
-func (e *epoll) Register(fd int32, eventHandle eventHandle) error {
+func (e *epoll) Register(fd int32, evh eventHandle) error {
 	if err := syscall.EpollCtl(e.epfd, syscall.EPOLL_CTL_ADD, int(fd), &syscall.EpollEvent{
 		Events: syscall.EPOLLIN,
 		Fd:     fd, //设置监听描述符
 	}); err != nil {
 		return err
 	}
-	e.fdMap.Store(fd, eventHandle)
+	e.fdMap.Store(fd, evh)
 	return nil
 }
 
@@ -73,7 +72,6 @@ func (e *epoll) Polling() {
 			return events&OutEvents == 1
 		}
 	)
-
 	for {
 		eventCount, err := syscall.EpollWait(e.epfd, e.events, -1) //获取就绪事件 单位:毫秒 1000毫秒=1秒，-1时无限等待
 		if err != nil {
@@ -82,16 +80,16 @@ func (e *epoll) Polling() {
 		}
 		for i := 0; i < eventCount; i++ { //遍历每个事件
 			event := e.events[i]
-			if v, ok := e.fdMap.Load(event.Fd); ok {
-				evh := v.(eventHandle)
-				if isWriteEvent(event.Events) {
-					e.gopoll.Schedule(evh.OnWriteable)
-				}
-				if isReadEvent(event.Events) {
-					e.gopoll.Schedule(evh.OnReadable)
-				}
-			} else {
+			v, ok := e.fdMap.Load(event.Fd)
+			if !ok || v == nil {
 				fmt.Println("epoll.Polling: no ", event.Fd)
+				continue
+			}
+			evh := v.(eventHandle)
+			if isWriteEvent(event.Events) {
+				e.gopool.Schedule(evh.OnWriteable)
+			} else if isReadEvent(event.Events) {
+				e.gopool.Schedule(evh.OnReadable)
 			}
 		}
 	}

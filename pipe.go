@@ -4,34 +4,39 @@ import (
 	"context"
 )
 
-//Pipe .
-type Pipe interface {
-	schedule(fn func(Handle, context.Context, func(context.Context)))
-}
+type (
+	//Pipe .
+	Pipe interface {
+		Regist(h Handle) Pipe
+		schedule(fn func(Handle, context.Context, func(context.Context)))
+	}
 
-type pipeLine struct {
-	index   int
-	handles []Handle
-	context context.Context
-}
+	pipeLine struct {
+		context context.Context
+		handles []Handle
+	}
+)
 
 //NewPipe .
-func NewPipe(ctx context.Context, hs []Handle) Pipe {
+func NewPipe(ctx context.Context) Pipe {
 	return &pipeLine{
-		index:   0,
 		context: ctx,
-		handles: hs,
 	}
+}
+
+func (p *pipeLine) Regist(h Handle) Pipe {
+	p.handles = append(p.handles, h)
+	return p
 }
 
 //schedule pipeline provider
 func (p *pipeLine) schedule(fn func(Handle, context.Context, func(context.Context))) {
-	p.index = 0
+	index := 0
 	var next func(context.Context)
 	next = func(ctx context.Context) {
-		if p.index < len(p.handles) {
-			p.index++
-			fn(p.handles[p.index-1], ctx, next)
+		if index < len(p.handles) {
+			index++
+			fn(p.handles[index-1], ctx, next)
 		}
 	}
 	next(p.context)
