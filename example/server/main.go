@@ -8,7 +8,6 @@ import (
 
 	"github.com/newde36524/goserver"
 	customer "github.com/newde36524/goserver/example/Server/customer"
-	"github.com/newde36524/goserver/handle"
 
 	"github.com/issue9/logs"
 )
@@ -51,7 +50,6 @@ func main() {
 		logs.Error(err)
 	}
 	server.UsePipe().
-		Regist(handle.NewRoomHandle("room", 1024)).
 		// Regist(new(customer.LogHandle)).
 		Regist(new(customer.RootHandle))
 	// Regist(handle.NewTraceHandle())

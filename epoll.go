@@ -15,7 +15,7 @@ type (
 		OnWriteable()
 	}
 
-	epoll struct {
+	netpoll struct {
 		epfd   int
 		events []syscall.EpollEvent
 		fdMap  sync.Map
@@ -23,21 +23,21 @@ type (
 	}
 )
 
-//NewEpoll .
-func NewEpoll(maxEpollEvents int, gopool *GoPool) *epoll {
+//NewNetpoll .
+func NewNetpoll(maxEvents int, gopool *GoPool) *netpoll {
 	epfd, err := syscall.EpollCreate1(0)
 	if err != nil {
 		panic(err)
 	}
-	return &epoll{
+	return &netpoll{
 		epfd:   epfd,
-		events: make([]syscall.EpollEvent, maxEpollEvents), //指定一次获取多少个就绪事件
-		gopool: gopool,                                     //指定协程池容量
+		events: make([]syscall.EpollEvent, maxEvents), //指定一次获取多少个就绪事件
+		gopool: gopool,                                //指定协程池容量
 	}
 }
 
 //Register .
-func (e *epoll) Register(fd int32, evh eventHandle) error {
+func (e *netpoll) Register(fd int32, evh eventHandle) error {
 	if err := syscall.EpollCtl(e.epfd, syscall.EPOLL_CTL_ADD, int(fd), &syscall.EpollEvent{
 		Events: syscall.EPOLLIN,
 		Fd:     fd, //设置监听描述符
@@ -49,12 +49,12 @@ func (e *epoll) Register(fd int32, evh eventHandle) error {
 }
 
 //Remove .
-func (e *epoll) Remove(fd int32) {
+func (e *netpoll) Remove(fd int32) {
 	e.fdMap.Delete(fd)
 }
 
 //Polling .
-func (e *epoll) Polling() {
+func (e *netpoll) Polling() {
 	const (
 		// ErrEvents represents exceptional events that are not read/write, like socket being closed,
 		// reading/writing from/to a closed socket, etc.

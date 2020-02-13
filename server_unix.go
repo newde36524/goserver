@@ -1,4 +1,4 @@
-// +build linux
+// +build linux darwin netbsd freebsd openbsd dragonfly
 
 package goserver
 
@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	EPOLLET        = 1 << 31
-	MaxEpollEvents = 1000000
+	EPOLLET   = 1 << 31
+	maxEvents = 1000000
 )
 
 //Server tcp服务器
@@ -22,7 +22,7 @@ type Server struct {
 	modOption ModOption //连接配置项
 	listener  net.Listener
 	option    *ConnOption
-	ep        *epoll
+	ep        *netpoll
 	ctx       context.Context
 	cancle    func()
 }
@@ -36,7 +36,7 @@ func (s *Server) Binding(address string) {
 	option := initOptions(s.modOption)
 	s.listener = listener
 	s.option = option
-	s.ep = NewEpoll(MaxEpollEvents, NewGoPool(option.MaxGopollTasks, option.MaxGopollExpire))
+	s.ep = NewNetpoll(maxEvents, NewGoPool(option.MaxGopollTasks, option.MaxGopollExpire))
 	go s.ep.Polling()
 	s.run()
 }
