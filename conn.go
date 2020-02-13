@@ -60,9 +60,11 @@ func (c *Conn) UseDebug() {
 	}
 }
 
-//UsePipe .
+//UsePipe create registrable pipeline and return
 //注意这里的类型是指针，如果取值类型，由于值拷贝，导致外部的连接对象无法读取存进来的pipe，因为他被赋值给拷贝出来的新Conn实例了
 //这里引起的思考:如果结构体方法不需要结构体指针就取 值类型方法，否则就选指针方法
+//当创建出来的实例是值类型时，如果实例的字段是设计为只读的，那么最好定义值类型方法，如果需要修改字段值，那么就选择定义为指针方法
+//值类型由于存在于内存栈中不会被GC扫描，可以提高程序性能
 func (c *Conn) UsePipe(pipe ...Pipe) Pipe {
 	if len(pipe) != 0 {
 		c.pipe = pipe[0]
@@ -129,36 +131,9 @@ func (c Conn) Close(msg ...string) {
 	defer func() {
 		select {
 		case <-c.ctx.Done():
-			c.rwc.SetDeadline(time.Now().Add(time.Second)) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
+			c.rwc.SetDeadline(time.Time{}) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
 			c.rwc.Close()
 			c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnClose(ctx, c.state, next) })
-			// switch v := c.rwc.(type) {
-			// case *net.TCPConn:
-			// 	v.SetKeepAlive(false)
-			// 	f, err := v.File()
-			// 	if err != nil {
-			// 		c.option.Logger.Errorf("goserver.Conn.Close: %s", err)
-			// 	}
-			// 	syscall.Shutdown(syscall.Handle(f.Fd()), 0)
-			// case *net.UDPConn:
-			// 	f, err := v.File()
-			// 	if err != nil {
-			// 		c.option.Logger.Errorf("goserver.Conn.Close: %s", err)
-			// 	}
-			// 	syscall.Shutdown(syscall.Handle(f.Fd()), 0)
-			// case *net.UnixConn:
-			// 	f, err := v.File()
-			// 	if err != nil {
-			// 		c.option.Logger.Errorf("goserver.Conn.Close: %s", err)
-			// 	}
-			// 	syscall.Shutdown(syscall.Handle(f.Fd()), 0)
-			// case *net.IPConn:
-			// 	f, err := v.File()
-			// 	if err != nil {
-			// 		c.option.Logger.Errorf("goserver.Conn.Close: %s", err)
-			// 	}
-			// 	syscall.Shutdown(syscall.Handle(f.Fd()), 0)
-			// }
 		}
 	}()
 	c.cancel()

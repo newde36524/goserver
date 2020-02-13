@@ -55,6 +55,7 @@ func (s *Server) run() {
 		}
 		conn := NewConn(s.ctx, rwc, *s.option)
 		conn.UsePipe(s.pipe)
+		conn.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, conn, next) })
 		if err := s.ep.Register(connFd, conn); err != nil {
 			fmt.Println(err)
 		}
