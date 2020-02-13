@@ -95,7 +95,8 @@ func (e *netpoll) Polling() {
 	for {
 		eventCount, err := syscall.Kevent(e.kqueue, e.changes, e.events, nil)
 		if err != nil && err != syscall.EINTR {
-			return err
+			fmt.Println(err)
+			continue
 		}
 		for i := 0; i < eventCount; i++ { //遍历每个事件
 			event := e.events[i]
