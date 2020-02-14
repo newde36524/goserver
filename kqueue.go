@@ -41,12 +41,12 @@ func NewNetpoll(maxEvents int, gopool *GoPool) *netpoll {
 	if err != nil {
 		panic(err)
 	}
-	changes := append([]syscall.Kevent_t,
+	changes := append([]syscall.Kevent_t{},
 		syscall.Kevent_t{
-			Ident: uint64(fd), Flags: syscall.EV_ADD, Filter: syscall.EVFILT_READ,
+			Ident: uint64(kqueueFd), Flags: syscall.EV_ADD, Filter: syscall.EVFILT_READ,
 		},
 		syscall.Kevent_t{
-			Ident: uint64(fd), Flags: syscall.EV_ADD, Filter: syscall.EVFILT_WRITE,
+			Ident: uint64(kqueueFd), Flags: syscall.EV_ADD, Filter: syscall.EVFILT_WRITE,
 		},
 	)
 	return &netpoll{
@@ -59,10 +59,10 @@ func NewNetpoll(maxEvents int, gopool *GoPool) *netpoll {
 
 //Register .
 func (e *netpoll) Register(fd int32, evh eventHandle) error {
-	changes := append([]syscall.Kevent_t,
-		syscall.Kevent_t{
-			Ident: uint64(fd), Flags: syscall.NOTE_TRIGGER, Filter: syscall.EVFILT_USER,
-		},
+	changes := append([]syscall.Kevent_t{},
+		// syscall.Kevent_t{
+		// 	Ident: uint64(fd), Flags: syscall.NOTE_TRIGGER, Filter: syscall.EVFILT_USER,
+		// },
 		syscall.Kevent_t{
 			Ident: uint64(fd), Flags: syscall.EV_ADD, Filter: syscall.EVFILT_READ,
 		},
@@ -85,15 +85,15 @@ func (e *netpoll) Remove(fd int32) {
 //Polling .
 func (e *netpoll) Polling() {
 	var (
-		isReadEvent = func(events uint64) bool {
-			return true
+		isReadEvent = func(event syscall.Kevent_t) bool {
+			return event.Filter == syscall.EVFILT_WRITE
 		}
-		isWriteEvent = func(events uint64) bool { //暂不知如何判断kqueue的读写事件
-			return false
+		isWriteEvent = func(event syscall.Kevent_t) bool {
+			return event.Filter == syscall.EVFILT_READ
 		}
 	)
 	for {
-		eventCount, err := syscall.Kevent(e.kqueue, e.changes, e.events, nil)
+		eventCount, err := syscall.Kevent(e.kqueueFd, nil, e.events, nil)
 		if err != nil && err != syscall.EINTR {
 			fmt.Println(err)
 			continue
@@ -106,9 +106,9 @@ func (e *netpoll) Polling() {
 				continue
 			}
 			evh := v.(eventHandle)
-			if isWriteEvent(event.Events) {
+			if isWriteEvent(event) {
 				e.gopool.Schedule(evh.OnWriteable)
-			} else if isReadEvent(event.Events) {
+			} else if isReadEvent(event) {
 				e.gopool.Schedule(evh.OnReadable)
 			}
 		}

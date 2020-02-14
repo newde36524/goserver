@@ -65,11 +65,11 @@ func (e *netpoll) Polling() {
 		InEvents = ErrEvents | syscall.EPOLLIN | syscall.EPOLLPRI
 	)
 	var (
-		isReadEvent = func(events uint32) bool {
-			return events&InEvents == 1
+		isReadEvent = func(event syscall.EpollEvent) bool {
+			return event.Events&InEvents == 1
 		}
-		isWriteEvent = func(events uint32) bool {
-			return events&OutEvents == 1
+		isWriteEvent = func(event syscall.EpollEvent) bool {
+			return event.Events&OutEvents == 1
 		}
 	)
 	for {
@@ -86,9 +86,9 @@ func (e *netpoll) Polling() {
 				continue
 			}
 			evh := v.(eventHandle)
-			if isWriteEvent(event.Events) {
+			if isWriteEvent(event) {
 				e.gopool.Schedule(evh.OnWriteable)
-			} else if isReadEvent(event.Events) {
+			} else if isReadEvent(event) {
 				e.gopool.Schedule(evh.OnReadable)
 			}
 		}
