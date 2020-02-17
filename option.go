@@ -22,7 +22,7 @@ func initOptions(options ...ModOption) *ConnOption {
 		sendTimeOut               time.Duration
 		handTimeOut               time.Duration
 		maxWaitCountByHandTimeOut int
-		MaxGopollTasks            = 10
+		MaxGopollTasks            = 1024
 		MaxGopollExpire           = 10 * time.Second
 	)
 	opt := &ConnOption{

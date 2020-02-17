@@ -1,0 +1,38 @@
+{
+	"name": "goserver-snippets",
+	"displayName": "goserver snippets",
+	"description": "goserver init template",
+	"version": "0.0.1",
+	"publisher": "zsk",
+	"repository": {
+		"url": ""
+	},
+	"author": {
+		"name": "zsk",
+		"email": "718114245@qq.com"
+	},
+	"engines": {
+		"vscode": "^1.39.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [],
+	"main": "",
+	"contributes": {
+		"languages": [
+			{
+				"id": "go",
+				"extensions": [
+					".go"
+				]
+			}
+		],
+		"snippets": [
+			{
+				"language": "go",
+				"path": "./src/snippets/go.json"
+			}
+		]
+	}
+}

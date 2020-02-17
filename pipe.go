@@ -17,8 +17,8 @@ type (
 	}
 )
 
-//NewPipe .
-func NewPipe(ctx context.Context) Pipe {
+//newPipe .
+func newPipe(ctx context.Context) Pipe {
 	return &pipeLine{
 		context: ctx,
 	}

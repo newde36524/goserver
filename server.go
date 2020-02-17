@@ -21,18 +21,13 @@ func New(network string, modOption ModOption) (srv *Server, err error) {
 	return
 }
 
-// //Use middleware
-// func (s *Server) Use(h Handle) {
-// 	s.handles = append(s.handles, h)
-// }
-
 //UsePipe .
 func (s *Server) UsePipe(pipe ...Pipe) Pipe {
 	if len(pipe) != 0 {
 		s.pipe = pipe[0]
 	}
 	if s.pipe == nil {
-		s.pipe = NewPipe(s.ctx)
+		s.pipe = newPipe(s.ctx)
 	}
 	return s.pipe
 }

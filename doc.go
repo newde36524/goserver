@@ -38,10 +38,8 @@
 		defer next(ctx)
 		b := make([]byte, 1024)
 		n, _ := conn.Read(b)
-		p := &goserver.P{
-			Data: b[:n],
-		}
-		return p
+		p := goserver.P(b[:n])
+		return &p
 	}
 
 	func (RootHandle) OnConnection(ctx context.Context, conn goserver.Conn, next func(context.Context)) {

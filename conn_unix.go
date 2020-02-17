@@ -8,7 +8,7 @@ import (
 
 //OnWriteable .
 func (c Conn) OnWriteable() {
-	c.option.Logger.Info("conn_unix.go: conn OnWriteable")
+	c.option.Logger.Info("conn_unix.go: do nothing")
 }
 
 //OnReadable 服务端建立的连接处理方法

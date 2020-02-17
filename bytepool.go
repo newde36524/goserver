@@ -4,7 +4,7 @@ import (
 	"io"
 )
 
-//BytePool .
+//ByteBuffer .
 type ByteBuffer struct {
 	io.ReadWriter
 	w   int
@@ -24,6 +24,7 @@ func (b ByteBuffer) Write(p []byte) (n int, err error) {
 	b.w += n
 	return
 }
+
 func (b ByteBuffer) Read(p []byte) (n int, err error) {
 	n, err = b.rd.Read(b.buf)
 	if err != nil {

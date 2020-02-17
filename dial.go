@@ -20,7 +20,7 @@ func DialTCP(address string, option ConnOption) (*Conn, error) {
 	return Dial("tcp", address, option)
 }
 
-//DialUDP create tcp conn
+//DialUDP create udp conn
 func DialUDP(address string, option ConnOption) (*Conn, error) {
 	return Dial("udp", address, option)
 }

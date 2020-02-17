@@ -22,7 +22,7 @@ type Server struct {
 	modOption ModOption //连接配置项
 	listener  net.Listener
 	option    *ConnOption
-	ep        *netpoll
+	np        *netPoll
 	ctx       context.Context
 	cancle    func()
 }
@@ -36,8 +36,8 @@ func (s *Server) Binding(address string) {
 	option := initOptions(s.modOption)
 	s.listener = listener
 	s.option = option
-	s.ep = NewNetpoll(maxEvents, NewGoPool(option.MaxGopollTasks, option.MaxGopollExpire))
-	go s.ep.Polling()
+	s.np = newNetpoll(maxEvents, newGoPool(option.MaxGopollTasks, option.MaxGopollExpire))
+	go s.np.Polling()
 	s.run()
 }
 
@@ -53,10 +53,13 @@ func (s *Server) run() {
 			s.option.Logger.Error(err)
 			return
 		}
+		// if err := syscall.SetNonblock(int(connFd), true); err != nil { //设置非阻塞模式
+		// 	os.Exit(1)
+		// }
 		conn := NewConn(s.ctx, rwc, *s.option)
 		conn.UsePipe(s.pipe)
 		conn.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, conn, next) })
-		if err := s.ep.Register(connFd, conn); err != nil {
+		if err := s.np.Register(connFd, conn); err != nil {
 			fmt.Println(err)
 		}
 	}

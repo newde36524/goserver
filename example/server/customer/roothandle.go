@@ -41,10 +41,8 @@ func (RootHandle) ReadPacket(ctx context.Context, conn goserver.Conn, next func(
 		}
 	}
 	logs.Info("ReadPacket")
-	p := &goserver.P{
-		Data: b[:n],
-	}
-	return p
+	p := goserver.P(b[:n])
+	return &p
 }
 
 //OnConnection .
@@ -66,6 +64,9 @@ func (RootHandle) OnMessage(ctx context.Context, conn goserver.Conn, p goserver.
 func (RootHandle) OnClose(ctx context.Context, state *goserver.ConnState, next func(context.Context)) {
 	defer next(ctx)
 	logs.Infof("客户端断开连接,连接状态:%s", state.String())
+	// buf := make([]byte, 9999999)
+	// n := runtime.Stack(buf, true)
+	// logs.Infof("%s", string(buf[:n]))
 }
 
 //OnRecvTimeOut .
@@ -84,11 +85,4 @@ func (RootHandle) OnHandTimeOut(ctx context.Context, conn goserver.Conn, next fu
 func (RootHandle) OnPanic(ctx context.Context, conn goserver.Conn, err error, next func(context.Context)) {
 	defer next(ctx)
 	logs.Errorf("%s: 服务器发生恐慌,错误信息:%s", conn.RemoteAddr(), err)
-}
-
-//OnRecvError .
-func (RootHandle) OnRecvError(ctx context.Context, conn goserver.Conn, err error, next func(context.Context)) {
-	defer next(ctx)
-	logs.Errorf("%s: 服务器接收数据异常,错误信息:%s", conn.RemoteAddr(), err)
-	conn.Close()
 }

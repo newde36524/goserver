@@ -8,22 +8,19 @@ type Packet interface {
 }
 
 //P .
-type P struct {
-	Packet
-	Data []byte
-}
+type P []byte
 
 //SetBuffer .
 func (p *P) SetBuffer(frame []byte) {
-	p.Data = frame
+	*p = frame
 }
 
 //GetBuffer .
-func (p *P) GetBuffer() []byte {
-	return p.Data
+func (p P) GetBuffer() []byte {
+	return p
 }
 
 //Serialize .
-func (p *P) Serialize() ([]byte, error) {
-	return p.Data, nil
+func (p P) Serialize() ([]byte, error) {
+	return p, nil
 }

@@ -9,23 +9,23 @@ import (
 )
 
 type (
-	//EventHandle .
+	//eventHandle .
 	eventHandle interface {
 		OnReadable()
 		OnWriteable()
 	}
 
-	netpoll struct {
+	netPoll struct {
 		kqueueFd int
 		events   []syscall.Kevent_t
 		changes  []syscall.Kevent_t
 		fdMap    sync.Map
-		gopool   *GoPool
+		gopool   *goPool
 	}
 )
 
-//NewEpoll .
-func NewNetpoll(maxEvents int, gopool *GoPool) *netpoll {
+//newNetEpoll .
+func newNetpoll(maxEvents int, gopool *goPool) *netPoll {
 	kqueueFd, err := syscall.Kqueue()
 	if err != nil {
 		panic(err)
@@ -52,13 +52,13 @@ func NewNetpoll(maxEvents int, gopool *GoPool) *netpoll {
 	return &netpoll{
 		kqueueFd: kqueueFd,
 		changes:  changes,
-		events:   make([]syscall.Kevent_t, maxEvents), //指定一次获取多少个就绪事件
-		gopool:   gopool,                              //指定协程池容量
+		events:   make([]syscall.Kevent_t, maxEvents),
+		gopool:   gopool,
 	}
 }
 
 //Register .
-func (e *netpoll) Register(fd int32, evh eventHandle) error {
+func (e *netPoll) Register(fd int32, evh eventHandle) error {
 	changes := append([]syscall.Kevent_t{},
 		// syscall.Kevent_t{
 		// 	Ident: uint64(fd), Flags: syscall.NOTE_TRIGGER, Filter: syscall.EVFILT_USER,
@@ -78,20 +78,22 @@ func (e *netpoll) Register(fd int32, evh eventHandle) error {
 }
 
 //Remove .
-func (e *netpoll) Remove(fd int32) {
+func (e *netPoll) Remove(fd int32) {
 	e.fdMap.Delete(uint64(fd))
 }
 
 //Polling .
-func (e *netpoll) Polling() {
+func (e *netPoll) Polling() {
 	var (
-		isReadEvent = func(event syscall.Kevent_t) bool {
+		isWriteEvent = func(event syscall.Kevent_t) bool {
 			return event.Filter == syscall.EVFILT_WRITE
 		}
-		isWriteEvent = func(event syscall.Kevent_t) bool {
+		isReadEvent = func(event syscall.Kevent_t) bool {
 			return event.Filter == syscall.EVFILT_READ
 		}
 	)
+	wg := sync.WaitGroup{}
+	wg.Add(eventCount)
 	for {
 		eventCount, err := syscall.Kevent(e.kqueueFd, nil, e.events, nil)
 		if err != nil && err != syscall.EINTR {
@@ -102,14 +104,25 @@ func (e *netpoll) Polling() {
 			event := e.events[i]
 			v, ok := e.fdMap.Load(event.Ident)
 			if !ok || v == nil {
-				fmt.Println("kqueue.Polling: no ", event.Ident)
+				fmt.Println("netpoll.Polling: no fd ", event.Ident)
 				continue
 			}
-			evh := v.(eventHandle)
+			evh, ok := v.(eventHandle)
+			if !ok {
+				continue
+			}
 			if isWriteEvent(event) {
-				e.gopool.Schedule(evh.OnWriteable)
+				e.gopool.Schedule(func() {
+					evh.OnWriteable()
+					wg.Done()
+				})
+				// evh.OnWriteable()
 			} else if isReadEvent(event) {
-				e.gopool.Schedule(evh.OnReadable)
+				e.gopool.Schedule(func() {
+					evh.OnReadable()
+					wg.Done()
+				})
+				// evh.OnReadable()
 			}
 		}
 	}
