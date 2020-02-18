@@ -15,11 +15,6 @@ type (
 		OnWriteable()
 	}
 
-	eventHandleDec struct {
-		eventHandle
-		gopool *goPool
-	}
-
 	netPoll struct {
 		epfd   int
 		events []syscall.EpollEvent
@@ -42,7 +37,7 @@ func newNetpoll(maxEvents int, gopool *goPool) *netPoll {
 }
 
 //Register .
-func (e *netPoll) Register(fd int32, evh eventHandle) error {
+func (e *netPoll) Regist(fd int32, evh eventHandle) error {
 	if err := syscall.EpollCtl(e.epfd, syscall.EPOLL_CTL_ADD, int(fd), &syscall.EpollEvent{
 		Events: syscall.EPOLLIN,
 		Fd:     fd,

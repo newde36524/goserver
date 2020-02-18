@@ -16,7 +16,9 @@ type Server struct {
 	pipe      Pipe      //连接处理程序管道
 	network   string    //网络
 	modOption ModOption //连接配置项
+	opt       *ConnOption
 	ctx       context.Context
+	listener  net.Listener
 	cancle    func()
 }
 
@@ -26,33 +28,43 @@ func (s *Server) Binding(address string) {
 	if err != nil {
 		return
 	}
-	option := initOptions(s.modOption)
-	defer s.cancle()
-	defer listener.Close()
+	opt := initOptions(s.modOption)
+	s.opt = opt
+	s.listener = listener
+	go s.run()
+}
+
+func (s *Server) run() {
 	defer func() {
 		defer recover()
 		if err := recover(); err != nil {
-			if option.Logger != nil {
-				option.Logger.Error(err)
-				option.Logger.Error(debug.Stack())
+			if s.opt.Logger != nil {
+				s.opt.Logger.Error(err)
+				s.opt.Logger.Error(string(debug.Stack()))
 			} else {
 				fmt.Println(err)
-				fmt.Println(debug.Stack())
+				fmt.Println(string(debug.Stack()))
 			}
 		}
+		s.cancle()
+		s.listener.Close()
 	}()
 	for {
-		rwc, err := listener.Accept()
+		conn, err := s.listener.Accept()
 		if err != nil {
-			option.Logger.Error(err)
+			s.opt.Logger.Error(err)
 			<-time.After(time.Second)
 			continue
 		}
-		conn := NewConn(s.ctx, rwc, *option)
-		conn.UsePipe(s.pipe)
-		if s.isDebug {
-			conn.UseDebug()
-		}
-		conn.Run()
+		s.handleConnection(conn)
 	}
+}
+
+func (s *Server) handleConnection(rwc net.Conn) {
+	conn := NewConn(s.ctx, rwc, *s.opt)
+	conn.UsePipe(s.pipe)
+	if s.isDebug {
+		conn.UseDebug()
+	}
+	conn.Run()
 }

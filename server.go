@@ -22,9 +22,9 @@ func New(network string, modOption ModOption) (srv *Server, err error) {
 }
 
 //UsePipe .
-func (s *Server) UsePipe(pipe ...Pipe) Pipe {
-	if len(pipe) != 0 {
-		s.pipe = pipe[0]
+func (s *Server) UsePipe(p ...Pipe) Pipe {
+	if len(p) != 0 {
+		s.pipe = p[0]
 	}
 	if s.pipe == nil {
 		s.pipe = newPipe(s.ctx)

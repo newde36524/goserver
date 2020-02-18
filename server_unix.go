@@ -21,7 +21,7 @@ type Server struct {
 	network   string    //网络
 	modOption ModOption //连接配置项
 	listener  net.Listener
-	option    *ConnOption
+	opt       *ConnOption
 	np        *netPoll
 	ctx       context.Context
 	cancle    func()
@@ -33,35 +33,39 @@ func (s *Server) Binding(address string) {
 	if err != nil {
 		panic(err)
 	}
-	option := initOptions(s.modOption)
+	opt := initOptions(s.modOption)
 	s.listener = listener
-	s.option = option
-	s.np = newNetpoll(maxEvents, newGoPool(option.MaxGopollTasks, option.MaxGopollExpire))
+	s.opt = opt
+	s.np = newNetpoll(maxEvents, newGoPool(opt.MaxGopollTasks, opt.MaxGopollExpire))
 	go s.np.Polling()
 	s.run()
 }
 
 func (s *Server) run() {
 	for {
-		rwc, err := s.listener.Accept()
+		conn, err := s.listener.Accept()
 		if err != nil {
-			s.option.Logger.Error(err)
+			s.opt.Logger.Error(err)
 			return
 		}
-		connFd, err := netConnToConnFD(rwc)
-		if err != nil {
-			s.option.Logger.Error(err)
-			return
-		}
-		// if err := syscall.SetNonblock(int(connFd), true); err != nil { //设置非阻塞模式
-		// 	os.Exit(1)
-		// }
-		conn := NewConn(s.ctx, rwc, *s.option)
-		conn.UsePipe(s.pipe)
-		conn.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, conn, next) })
-		if err := s.np.Register(connFd, conn); err != nil {
-			fmt.Println(err)
-		}
+		s.handleConnection(conn)
+	}
+}
+
+func (s *Server) handleConnection(rwc net.Conn) {
+	connFd, err := netConnToConnFD(rwc)
+	if err != nil {
+		s.opt.Logger.Error(err)
+		return
+	}
+	// if err := syscall.SetNonblock(int(connFd), true); err != nil { //设置非阻塞模式
+	// 	os.Exit(1)
+	// }
+	conn := NewConn(s.ctx, rwc, *s.opt)
+	conn.UsePipe(s.pipe)
+	conn.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, conn, next) })
+	if err := s.np.Regist(connFd, conn); err != nil {
+		fmt.Println(err)
 	}
 }
 

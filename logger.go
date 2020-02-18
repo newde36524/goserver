@@ -24,8 +24,8 @@ type DefaultLogger struct {
 }
 
 //NewDefaultLogger .
-func NewDefaultLogger() (result DefaultLogger, err error) {
-	result = DefaultLogger{}
+func NewDefaultLogger() (log DefaultLogger, err error) {
+	log = DefaultLogger{}
 	return
 }
 

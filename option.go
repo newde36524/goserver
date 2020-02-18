@@ -16,7 +16,7 @@ type ConnOption struct {
 //ModOption .
 type ModOption func(*ConnOption)
 
-func initOptions(options ...ModOption) *ConnOption {
+func initOptions(opts ...ModOption) *ConnOption {
 	var (
 		recvTimeOut               time.Duration
 		sendTimeOut               time.Duration
@@ -33,8 +33,8 @@ func initOptions(options ...ModOption) *ConnOption {
 		MaxGopollTasks:            MaxGopollTasks,
 		MaxGopollExpire:           MaxGopollExpire,
 	}
-	for _, option := range options {
-		option(opt)
+	for _, o := range opts {
+		o(opt)
 	}
 	if opt.RecvTimeOut == recvTimeOut {
 		panic("goserver: recvTimeOut option not set")

@@ -58,7 +58,7 @@ func newNetpoll(maxEvents int, gopool *goPool) *netPoll {
 }
 
 //Register .
-func (e *netPoll) Register(fd int32, evh eventHandle) error {
+func (e *netPoll) Regist(fd int32, evh eventHandle) error {
 	changes := append([]syscall.Kevent_t{},
 		// syscall.Kevent_t{
 		// 	Ident: uint64(fd), Flags: syscall.NOTE_TRIGGER, Filter: syscall.EVFILT_USER,

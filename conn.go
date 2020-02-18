@@ -21,10 +21,10 @@ type Conn struct {
 }
 
 //NewConn return a wrap of raw conn
-func NewConn(ctx context.Context, rwc net.Conn, option ConnOption) Conn {
+func NewConn(ctx context.Context, rwc net.Conn, opt ConnOption) Conn {
 	c := Conn{
 		rwc:    rwc,
-		option: option,
+		option: opt,
 		state: &ConnState{
 			ActiveTime: time.Now(),
 			RemoteAddr: rwc.RemoteAddr().String(),
@@ -49,9 +49,9 @@ func (c *Conn) UseDebug() {
 }
 
 //UsePipe create registrable pipeline and return
-func (c *Conn) UsePipe(pipe ...Pipe) Pipe {
-	if len(pipe) != 0 {
-		c.pipe = pipe[0]
+func (c *Conn) UsePipe(p ...Pipe) Pipe {
+	if len(p) != 0 {
+		c.pipe = p[0]
 	}
 	if c.pipe == nil {
 		c.pipe = newPipe(c.ctx)
@@ -81,14 +81,14 @@ func (c Conn) Read(b []byte) (n int, err error) {
 }
 
 //Write send a packet to remote connection
-func (c Conn) Write(packet Packet) (err error) {
-	if packet == nil {
+func (c Conn) Write(p Packet) (err error) {
+	if p == nil {
 		if c.isDebug {
 			c.option.Logger.Debugf("%s: goserver.Conn.Write: packet is nil,do nothing", c.RemoteAddr())
 		}
 		return
 	}
-	sendData, err := packet.Serialize()
+	sendData, err := p.Serialize()
 	if err != nil {
 		return
 	}

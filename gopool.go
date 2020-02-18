@@ -13,11 +13,11 @@ type goPool struct {
 }
 
 //newGoPool .
-func newGoPool(size int, forExit time.Duration) *goPool {
+func newGoPool(size int, toExit time.Duration) *goPool {
 	return &goPool{
 		work:    make(chan func()),
 		sem:     make(chan struct{}, size),
-		timeout: forExit,
+		timeout: toExit,
 		taskMap: make(map[interface{}]chan func(), 1024),
 	}
 }

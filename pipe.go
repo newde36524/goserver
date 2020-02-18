@@ -12,7 +12,7 @@ type (
 	}
 
 	pipeLine struct {
-		context context.Context
+		ctx     context.Context
 		handles []Handle
 	}
 )
@@ -20,7 +20,7 @@ type (
 //newPipe .
 func newPipe(ctx context.Context) Pipe {
 	return &pipeLine{
-		context: ctx,
+		ctx: ctx,
 	}
 }
 
@@ -39,6 +39,6 @@ func (p *pipeLine) schedule(fn func(Handle, context.Context, func(context.Contex
 			fn(p.handles[index-1], ctx, next)
 		}
 	}
-	next(p.context)
+	next(p.ctx)
 	return
 }
