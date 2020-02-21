@@ -4,6 +4,7 @@ package goserver
 
 import (
 	"context"
+	"time"
 )
 
 //OnWriteable .
@@ -13,9 +14,17 @@ func (c Conn) OnWriteable() {
 
 //OnReadable 服务端建立的连接处理方法
 func (c Conn) OnReadable() {
+	c.readTime = time.Now()
 	pch := <-c.readPacketOne()
 	if pch != nil {
 		c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnMessage(ctx, c, pch, next) })
+	}
+}
+
+//OnRecvTimeHandler .
+func (c Conn) OnRecvTimeHandler() {
+	if time.Now().Sub(c.readTime) > c.option.RecvTimeOut {
+		c.Close("conn recv data timeout")
 	}
 }
 

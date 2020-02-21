@@ -11,20 +11,22 @@ import (
 
 //Conn net.Conn proxy object
 type Conn struct {
-	rwc     net.Conn        //row connection
-	option  ConnOption      //connection option object
-	state   *ConnState      //connection state
-	ctx     context.Context //global context
-	cancel  func()          //global context cancel function
-	isDebug bool            //is open inner debug message flag
-	pipe    Pipe            //connection handle pipeline
+	rwc      net.Conn        //row connection
+	option   ConnOption      //connection option object
+	state    *ConnState      //connection state
+	ctx      context.Context //global context
+	cancel   func()          //global context cancel function
+	isDebug  bool            //is open inner debug message flag
+	pipe     Pipe            //connection handle pipeline
+	readTime time.Time       //connection read event trigger time
 }
 
 //NewConn return a wrap of raw conn
 func NewConn(ctx context.Context, rwc net.Conn, opt ConnOption) Conn {
 	c := Conn{
-		rwc:    rwc,
-		option: opt,
+		rwc:      rwc,
+		option:   opt,
+		readTime: time.Now(),
 		state: &ConnState{
 			ActiveTime: time.Now(),
 			RemoteAddr: rwc.RemoteAddr().String(),

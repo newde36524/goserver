@@ -36,7 +36,9 @@ func (s *Server) Binding(address string) {
 	opt := initOptions(s.modOption)
 	s.listener = listener
 	s.opt = opt
-	s.np = newNetpoll(maxEvents, newGoPool(opt.MaxGopollTasks, opt.MaxGopollExpire))
+	// s.np = newNetpoll(maxEvents, newGoPool(opt.MaxGopollTasks, opt.MaxGopollExpire))
+	s.np = newNetpoll(maxEvents, newgPoll(s.ctx, opt.RecvTaskBufferSize, opt.MaxGopollExpire, opt.ParallelSize))
+
 	go s.np.Polling()
 	s.run()
 }

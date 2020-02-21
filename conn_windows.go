@@ -48,6 +48,7 @@ func (c Conn) readPacket(size int) <-chan Packet {
 func (c Conn) recv(size int) {
 	go c.safeFn(func() {
 		defer func() {
+			// fmt.Println("===========================")
 			if c.isDebug {
 				c.option.Logger.Debugf("%s: goserver.Conn.recv: recv goruntinue exit", c.RemoteAddr())
 			}
