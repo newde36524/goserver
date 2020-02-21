@@ -51,6 +51,9 @@ func initOptions(opts ...ModOption) *ConnOption {
 	if opt.MaxWaitCountByHandTimeOut < maxWaitCountByHandTimeOut {
 		panic("goserver: The maxWaitCountByHandTimeOut value must be greater than or equal to 1")
 	}
+	if opt.ParallelSize < 1 {
+		panic("goserver: The parallelSize value must be greater than or equal to 1")
+	}
 	if opt.RecvTaskBufferSize < 1 {
 		panic("goserver: The recvTaskBufferSize value must be greater than or equal to 1")
 	}
