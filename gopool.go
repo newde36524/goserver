@@ -2,69 +2,9 @@ package goserver
 
 import (
 	"context"
+	"sync"
 	"time"
 )
-
-//goPool 普通协程池
-type goPool struct {
-	work    chan func()
-	sem     chan struct{}
-	timeout time.Duration
-	taskMap map[interface{}]chan func()
-}
-
-//newGoPool .
-func newGoPool(size int, toExit time.Duration) *goPool {
-	return &goPool{
-		work:    make(chan func()),
-		sem:     make(chan struct{}, size),
-		timeout: toExit,
-		taskMap: make(map[interface{}]chan func(), 1024),
-	}
-}
-
-//Grow .
-func (p *goPool) Grow(num int) error {
-	newSem := make(chan struct{}, num)
-loop:
-	for {
-		select {
-		case sign := <-p.sem:
-			select {
-			case newSem <- sign:
-			default:
-			}
-		default:
-			break loop
-		}
-	}
-	p.sem = newSem
-	return nil
-}
-
-//Schedule 把方法加入协程池并被执行
-func (p *goPool) Schedule(task func()) error {
-	select {
-	case p.work <- task:
-	case p.sem <- struct{}{}:
-		go p.worker(p.timeout, task)
-	}
-	return nil
-}
-
-func (p *goPool) worker(delay time.Duration, task func()) {
-	defer func() { <-p.sem }()
-	timer := time.NewTimer(delay)
-	for {
-		task()
-		timer.Reset(delay)
-		select {
-		case task = <-p.work:
-		case <-timer.C:
-			return
-		}
-	}
-}
 
 //gPool .
 //针对key值进行并行调用的协程池,同一个key下的任务串行,不同key下的任务并行
@@ -72,36 +12,39 @@ type gPool struct {
 	ctx     context.Context
 	taskNum int
 	exp     time.Duration
-	m       map[interface{}]*gItem
+	m       sync.Map
 	sign    chan struct{}
 }
 
-func newgPoll(ctx context.Context, taskNum int, exp time.Duration, size int) gPool {
-	g := gPool{
+func newgPoll(ctx context.Context, perItemTaskNum int, exp time.Duration, parallelSize int) *gPool {
+	g := &gPool{
 		ctx:     ctx,
-		taskNum: taskNum,
+		taskNum: perItemTaskNum,
 		exp:     exp,
-		m:       make(map[interface{}]*gItem),
-		sign:    make(chan struct{}, size),
+		sign:    make(chan struct{}, parallelSize),
 	}
 	return g
 }
 
-func (g gPool) SchduleByKey(key interface{}, task func()) {
-	if v, ok := g.m[key]; ok {
-		v.DoOrInChan(task)
-	} else {
-		select {
-		case g.sign <- struct{}{}:
-		}
-		g.m[key] = newgItem(g.ctx, g.taskNum, g.exp, func() {
-			delete(g.m, key)
+//SchduleByKey 为不同key值下的任务并行调用,相同key值下的任务串行调用,并行任务量和串行任务量由配置参数决定
+func (g *gPool) SchduleByKey(key interface{}, task func()) bool {
+	if v, ok := g.m.Load(key); ok { //希望在同一协程下顺序执行
+		gItem := v.(*gItem)
+		return gItem.DoOrInChan(task)
+	}
+	select {
+	case <-g.ctx.Done():
+		return false
+	case g.sign <- struct{}{}:
+		gItem := newgItem(g.ctx, g.taskNum, g.exp, func() {
+			g.m.Delete(key)
 			select {
 			case <-g.sign:
 			default:
 			}
 		})
-		g.m[key].DoOrInChan(task)
+		g.m.Store(key, gItem)
+		return gItem.DoOrInChan(task)
 	}
 }
 
@@ -116,28 +59,24 @@ type gItem struct {
 func newgItem(ctx context.Context, taskNum int, exp time.Duration, onExit func()) *gItem {
 	return &gItem{
 		tasks:  make(chan func(), taskNum),
-		sign:   make(chan struct{}, 1),
+		sign:   make(chan struct{}, 1), //
 		ctx:    ctx,
 		exp:    exp,
 		onExit: onExit,
 	}
 }
 
-func (g *gItem) DoOrInChan(task func()) {
-	select {
-	case g.sign <- struct{}{}: //保证只会开启一个协程
-		go g.worker()
-	default:
-	}
+func (g *gItem) DoOrInChan(task func()) bool {
 	select {
 	case <-g.ctx.Done():
-	case g.tasks <- task: //
+		return false
+	case g.tasks <- task:
+		return true
 	case g.sign <- struct{}{}:
 		go g.worker()
-		select {
-		case <-g.ctx.Done():
-		case g.tasks <- task:
-		}
+		return g.DoOrInChan(task)
+	default:
+		return false
 	}
 }
 
@@ -158,7 +97,12 @@ func (g *gItem) worker() {
 		case <-g.ctx.Done():
 			return
 		case task := <-g.tasks: //执行任务优先
-			timer.Reset(g.exp)
+			//timer.Reset(g.exp)
+			/*
+				1) 如果重置时间,那么会在任务全部处理完成后继续等待过期,虽然空闲等待是一种资源浪费,但这主要用于复用当前协程对任务队列的执行
+				2) 如果不重置时间,那么当前协程会在有效期内执行任务队列,但超过时间后协程只会创建给下一个任务队列
+				3) 个人认为,不重置时间可均衡各个任务队列之间的任务调度
+			*/
 			task()
 		case <-timer.C:
 			return

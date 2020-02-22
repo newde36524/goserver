@@ -9,7 +9,6 @@ type ConnOption struct {
 	HandTimeOut               time.Duration //处理消息超时时间
 	Logger                    Logger        //日志打印对象
 	MaxWaitCountByHandTimeOut int           //最大处理消息协程堆积数量 只在windows下有效
-	RecvTaskBufferSize        int           //单连接触发事件任务缓存大小
 	ParallelSize              int           //多连接触发事件并行处理数量
 	MaxGopollExpire           time.Duration //协程池声明周期
 }
@@ -23,7 +22,6 @@ func initOptions(opts ...ModOption) *ConnOption {
 		sendTimeOut               time.Duration
 		handTimeOut               time.Duration
 		maxWaitCountByHandTimeOut int
-		RecvTaskBufferSize        = 100
 		ParallelSize              = 1024
 		MaxGopollExpire           = 10 * time.Second
 	)
@@ -33,7 +31,6 @@ func initOptions(opts ...ModOption) *ConnOption {
 		HandTimeOut:               handTimeOut,
 		MaxWaitCountByHandTimeOut: 1,
 		ParallelSize:              ParallelSize,
-		RecvTaskBufferSize:        RecvTaskBufferSize,
 		MaxGopollExpire:           MaxGopollExpire,
 	}
 	for _, o := range opts {
@@ -53,9 +50,6 @@ func initOptions(opts ...ModOption) *ConnOption {
 	}
 	if opt.ParallelSize < 1 {
 		panic("goserver: The parallelSize value must be greater than or equal to 1")
-	}
-	if opt.RecvTaskBufferSize < 1 {
-		panic("goserver: The recvTaskBufferSize value must be greater than or equal to 1")
 	}
 	return opt
 }

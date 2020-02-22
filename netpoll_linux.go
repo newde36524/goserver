@@ -12,12 +12,12 @@ type (
 		epfd         int
 		events       []syscall.EpollEvent
 		eventAdapter eventAdapter
-		gPool        gPool
+		gPool        *gPool
 	}
 )
 
 //newNetpoll .
-func newNetpoll(maxEvents int, gPool gPool) *netPoll {
+func newNetpoll(maxEvents int, gPool *gPool) *netPoll {
 	epfd, err := syscall.EpollCreate1(0)
 	if err != nil {
 		panic(err)
@@ -39,7 +39,6 @@ func (e *netPoll) Regist(fd int32, evh eventHandle) error {
 		return err
 	}
 	e.eventAdapter.Link(fd, evh)
-	// e.fdMap.Store(fd, eventHandleDec{evh, e.gopool})
 	return nil
 }
 

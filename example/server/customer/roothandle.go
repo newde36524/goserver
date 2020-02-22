@@ -58,6 +58,7 @@ func (RootHandle) OnMessage(ctx context.Context, conn goserver.Conn, p goserver.
 	// logs.Info(ctx.Value("logger"))
 	logs.Infof("%s:获取客户端信息: %s", conn.RemoteAddr(), string(p.GetBuffer()))
 	conn.Write(p)
+	// time.Sleep(10 * time.Second)
 }
 
 //OnClose .

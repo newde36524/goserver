@@ -36,9 +36,8 @@ func (s *Server) Binding(address string) {
 	opt := initOptions(s.modOption)
 	s.listener = listener
 	s.opt = opt
-	// s.np = newNetpoll(maxEvents, newGoPool(opt.MaxGopollTasks, opt.MaxGopollExpire))
-	s.np = newNetpoll(maxEvents, newgPoll(s.ctx, opt.RecvTaskBufferSize, opt.MaxGopollExpire, opt.ParallelSize))
-
+	//协程池的perItemTaskNum设置为0防止netPoll重复生成任务,为0时并不会阻塞协程池任务调度
+	s.np = newNetpoll(maxEvents, newgPoll(s.ctx, 0, opt.MaxGopollExpire, opt.ParallelSize))
 	go s.np.Polling()
 	s.run()
 }
