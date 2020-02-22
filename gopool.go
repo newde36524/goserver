@@ -2,6 +2,7 @@ package goserver
 
 import (
 	"context"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -76,6 +77,7 @@ func (g *gItem) DoOrInChan(task func()) bool {
 		go g.worker()
 		return g.DoOrInChan(task)
 	default:
+		runtime.Gosched()
 		return false
 	}
 }
