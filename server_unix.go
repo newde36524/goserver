@@ -37,6 +37,7 @@ func (s *Server) Binding(address string) {
 	s.listener = listener
 	s.opt = opt
 	//协程池的perItemTaskNum设置为0防止netPoll重复生成任务,为0时并不会阻塞协程池任务调度
+	//由于netPoll的特性,产生的任务允许丢弃
 	s.np = newNetpoll(maxEvents, newgPoll(s.ctx, 0, opt.MaxGopollExpire, opt.ParallelSize))
 	go s.np.Polling()
 	s.run()
@@ -70,19 +71,19 @@ func (s *Server) handleConnection(rwc net.Conn) {
 	}
 }
 
-func netConnToConnFD(conn net.Conn) (connFD int32, err error) {
+func netConnToConnFD(conn net.Conn) (connFD uint64, err error) {
 	switch v := interface{}(conn).(type) {
 	case *net.TCPConn:
 		if raw, err := v.SyscallConn(); err == nil {
 			raw.Control(func(fd uintptr) {
-				connFD = int32(fd)
+				connFD = uint64(fd)
 			})
 			return connFD, nil
 		}
 	case *net.UDPConn:
 		if raw, err := v.SyscallConn(); err == nil {
 			raw.Control(func(fd uintptr) {
-				connFD = int32(fd)
+				connFD = uint64(fd)
 			})
 			return connFD, nil
 		}

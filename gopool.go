@@ -9,6 +9,7 @@ import (
 
 //gPool .
 //针对key值进行并行调用的协程池,同一个key下的任务串行,不同key下的任务并行
+//实现协程池区分执行不同任务类型的调度
 type gPool struct {
 	ctx     context.Context
 	taskNum int
@@ -22,7 +23,7 @@ func newgPoll(ctx context.Context, perItemTaskNum int, exp time.Duration, parall
 		ctx:     ctx,
 		taskNum: perItemTaskNum,
 		exp:     exp,
-		sign:    make(chan struct{}, parallelSize),
+		sign:    make(chan struct{}, parallelSize), //创建的协程池数量
 	}
 	return g
 }
@@ -60,7 +61,7 @@ type gItem struct {
 func newgItem(ctx context.Context, taskNum int, exp time.Duration, onExit func()) *gItem {
 	return &gItem{
 		tasks:  make(chan func(), taskNum),
-		sign:   make(chan struct{}, 1), //
+		sign:   make(chan struct{}, 1), //最多只创建一个协程
 		ctx:    ctx,
 		exp:    exp,
 		onExit: onExit,
@@ -102,7 +103,7 @@ func (g *gItem) worker() {
 			//timer.Reset(g.exp)
 			/*
 				1) 如果重置时间,那么会在任务全部处理完成后继续等待过期,虽然空闲等待是一种资源浪费,但这主要用于复用当前协程对任务队列的执行
-				2) 如果不重置时间,那么当前协程会在有效期内执行任务队列,但超过时间后协程只会创建给下一个任务队列
+				2) 如果不重置时间,那么会在任务队列为空时并且过期后退出协程
 				3) 个人认为,不重置时间可均衡各个任务队列之间的任务调度
 			*/
 			task()

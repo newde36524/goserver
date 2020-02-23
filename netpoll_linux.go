@@ -7,14 +7,12 @@ import (
 	"syscall"
 )
 
-type (
-	netPoll struct {
-		epfd         int
-		events       []syscall.EpollEvent
-		eventAdapter eventAdapter
-		gPool        *gPool
-	}
-)
+type netPoll struct {
+	epfd         int
+	events       []syscall.EpollEvent
+	eventAdapter eventAdapter
+	gPool        *gPool
+}
 
 //newNetpoll .
 func newNetpoll(maxEvents int, gPool *gPool) *netPoll {
@@ -31,20 +29,20 @@ func newNetpoll(maxEvents int, gPool *gPool) *netPoll {
 }
 
 //Register .
-func (e *netPoll) Regist(fd int32, evh eventHandle) error {
+func (e *netPoll) Regist(fd uint64, evh eventHandle) error {
 	if err := syscall.EpollCtl(e.epfd, syscall.EPOLL_CTL_ADD, int(fd), &syscall.EpollEvent{
 		Events: syscall.EPOLLIN,
-		Fd:     fd,
+		Fd:     int32(fd),
 	}); err != nil {
 		return err
 	}
-	e.eventAdapter.Link(fd, evh)
+	e.eventAdapter.Link(uint64(fd), evh)
 	return nil
 }
 
 //Remove .
-func (e *netPoll) Remove(fd int32) {
-	e.eventAdapter.UnLink(fd)
+func (e *netPoll) Remove(fd uint64) {
+	e.eventAdapter.UnLink(uint64(fd))
 }
 
 //Polling .
@@ -66,7 +64,7 @@ func (e *netPoll) Polling() {
 			return events&InEvents == 1
 		}
 	)
-	e.polling(func(fd int32, event uint32) error {
+	e.polling(func(fd uint64, event uint32) error {
 		evh := e.eventAdapter.Get(fd)
 		if evh == nil {
 			fmt.Printf("netpoll.Polling: no fd %d \n", fd)
@@ -84,7 +82,7 @@ func (e *netPoll) Polling() {
 	})
 }
 
-func (e *netPoll) polling(onEventTrigger func(fd int32, events uint32) error) {
+func (e *netPoll) polling(onEventTrigger func(fd uint64, events uint32) error) {
 	for {
 		// 注意: 客户端断开时,直到服务端调用Close断开连接之前的时间内,EpollWait不会阻塞
 		// 只要文件描述符存在，且处于io中断状态，EpollWait便不会等待
@@ -96,7 +94,7 @@ func (e *netPoll) polling(onEventTrigger func(fd int32, events uint32) error) {
 		}
 		for i := 0; i < eventCount; i++ {
 			event := e.events[i]
-			err := onEventTrigger(event.Fd, event.Events)
+			err := onEventTrigger(uint64(event.Fd), event.Events)
 			if err != nil {
 				fmt.Printf("netpoll.Polling: error : %s \n", err)
 				return

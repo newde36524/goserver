@@ -4,28 +4,19 @@ package goserver
 
 import (
 	"fmt"
-	"sync"
 	"syscall"
 )
 
-type (
-	//eventHandle .
-	eventHandle interface {
-		OnReadable()
-		OnWriteable()
-	}
-
-	netPoll struct {
-		kqueueFd int
-		events   []syscall.Kevent_t
-		changes  []syscall.Kevent_t
-		fdMap    sync.Map
-		gopool   *goPool
-	}
-)
+type netPoll struct {
+	kqueueFd     int
+	events       []syscall.Kevent_t
+	changes      []syscall.Kevent_t
+	eventAdapter eventAdapter
+	gPool        *gPool
+}
 
 //newNetEpoll .
-func newNetpoll(maxEvents int, gopool *goPool) *netPoll {
+func newNetpoll(maxEvents int, gPool *gPool) *netPoll {
 	kqueueFd, err := syscall.Kqueue()
 	if err != nil {
 		panic(err)
@@ -49,80 +40,81 @@ func newNetpoll(maxEvents int, gopool *goPool) *netPoll {
 			Ident: uint64(kqueueFd), Flags: syscall.EV_ADD, Filter: syscall.EVFILT_WRITE,
 		},
 	)
-	return &netpoll{
-		kqueueFd: kqueueFd,
-		changes:  changes,
-		events:   make([]syscall.Kevent_t, maxEvents),
-		gopool:   gopool,
+	return &netPoll{
+		kqueueFd:     kqueueFd,
+		changes:      changes,
+		events:       make([]syscall.Kevent_t, maxEvents),
+		gPool:        gPool,
+		eventAdapter: newdefaultAdapter(),
 	}
 }
 
 //Register .
-func (e *netPoll) Regist(fd int32, evh eventHandle) error {
+func (e *netPoll) Regist(fd uint64, evh eventHandle) error {
 	changes := append([]syscall.Kevent_t{},
 		// syscall.Kevent_t{
 		// 	Ident: uint64(fd), Flags: syscall.NOTE_TRIGGER, Filter: syscall.EVFILT_USER,
 		// },
 		syscall.Kevent_t{
-			Ident: uint64(fd), Flags: syscall.EV_ADD, Filter: syscall.EVFILT_READ,
+			Ident: fd, Flags: syscall.EV_ADD, Filter: syscall.EVFILT_READ,
 		},
 		syscall.Kevent_t{
-			Ident: uint64(fd), Flags: syscall.EV_ADD, Filter: syscall.EVFILT_WRITE,
+			Ident: fd, Flags: syscall.EV_ADD, Filter: syscall.EVFILT_WRITE,
 		},
 	)
 	if _, err := syscall.Kevent(e.kqueueFd, changes, nil, nil); err != nil {
 		return err
 	}
-	e.fdMap.Store(fd, evh)
+	e.eventAdapter.Link(fd, evh)
 	return nil
 }
 
 //Remove .
-func (e *netPoll) Remove(fd int32) {
-	e.fdMap.Delete(uint64(fd))
+func (e *netPoll) Remove(fd uint64) {
+	e.eventAdapter.UnLink(fd)
 }
 
 //Polling .
 func (e *netPoll) Polling() {
 	var (
-		isWriteEvent = func(event syscall.Kevent_t) bool {
-			return event.Filter == syscall.EVFILT_WRITE
+		isWriteEvent = func(events int16) bool {
+			return events == syscall.EVFILT_WRITE
 		}
-		isReadEvent = func(event syscall.Kevent_t) bool {
-			return event.Filter == syscall.EVFILT_READ
+		isReadEvent = func(events int16) bool {
+			return events == syscall.EVFILT_READ
 		}
 	)
-	wg := sync.WaitGroup{}
-	wg.Add(eventCount)
+	e.polling(func(fd uint64, events int16) error {
+		evh := e.eventAdapter.Get(fd)
+		if evh == nil {
+			fmt.Printf("netpoll.Polling: no fd %d \n", fd)
+			return nil
+		}
+		//在协程池中运行要保证同一个通道下的通信是串行的
+		if isWriteEvent(events) {
+			e.gPool.SchduleByKey(fd, evh.OnWriteable)
+			// evh.OnWriteable()
+		} else if isReadEvent(events) {
+			e.gPool.SchduleByKey(fd, evh.OnReadable)
+			// evh.OnReadable()
+		}
+		return nil
+	})
+}
+
+func (e *netPoll) polling(onEventTrigger func(fd uint64, events int16) error) {
 	for {
 		eventCount, err := syscall.Kevent(e.kqueueFd, nil, e.events, nil)
-		if err != nil && err != syscall.EINTR {
-			fmt.Println(err)
+		if err != nil && err != syscall.Errno(0x4) {
+			fmt.Printf("netpoll.Polling: error : %s \n", err)
 			continue
 		}
 		for i := 0; i < eventCount; i++ { //遍历每个事件
 			event := e.events[i]
-			v, ok := e.fdMap.Load(event.Ident)
-			if !ok || v == nil {
-				fmt.Println("netpoll.Polling: no fd ", event.Ident)
-				continue
-			}
-			evh, ok := v.(eventHandle)
-			if !ok {
-				continue
-			}
-			if isWriteEvent(event) {
-				e.gopool.Schedule(func() {
-					evh.OnWriteable()
-					wg.Done()
-				})
-				// evh.OnWriteable()
-			} else if isReadEvent(event) {
-				e.gopool.Schedule(func() {
-					evh.OnReadable()
-					wg.Done()
-				})
-				// evh.OnReadable()
+			err := onEventTrigger(event.Ident, event.Filter)
+			if err != nil {
+				fmt.Printf("netpoll.Polling: error : %s \n", err)
+				return
 			}
 		}
 	}

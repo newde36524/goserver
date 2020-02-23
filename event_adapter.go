@@ -11,9 +11,9 @@ type (
 
 	//eventAdapter .
 	eventAdapter interface {
-		Get(fd int32) eventHandle
-		Link(fd int32, evh eventHandle)
-		UnLink(fd int32)
+		Get(fd uint64) eventHandle
+		Link(fd uint64, evh eventHandle)
+		UnLink(fd uint64)
 	}
 
 	defaultAdapter struct {
@@ -27,7 +27,7 @@ func newdefaultAdapter() *defaultAdapter {
 }
 
 //Get .
-func (e *defaultAdapter) Get(fd int32) eventHandle {
+func (e *defaultAdapter) Get(fd uint64) eventHandle {
 	if o, ok := e.Load(fd); ok {
 		return o.(eventHandle)
 	}
@@ -35,11 +35,11 @@ func (e *defaultAdapter) Get(fd int32) eventHandle {
 }
 
 //Link .
-func (e *defaultAdapter) Link(fd int32, evh eventHandle) {
+func (e *defaultAdapter) Link(fd uint64, evh eventHandle) {
 	e.Store(fd, evh)
 }
 
 //UnLink .
-func (e *defaultAdapter) UnLink(fd int32) {
+func (e *defaultAdapter) UnLink(fd uint64) {
 	e.Delete(fd)
 }
