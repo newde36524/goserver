@@ -87,7 +87,7 @@ func (e *netPoll) Polling() {
 	e.polling(func(fd uint64, events int16) error {
 		evh := e.eventAdapter.Get(fd)
 		if evh == nil {
-			fmt.Printf("netpoll.Polling: no fd %d \n", fd)
+			fmt.Printf("goserver.netpoll_unix.go: no fd %d \n", fd)
 			return nil
 		}
 		//在协程池中运行要保证同一个通道下的通信是串行的
@@ -106,14 +106,14 @@ func (e *netPoll) polling(onEventTrigger func(fd uint64, events int16) error) {
 	for {
 		eventCount, err := syscall.Kevent(e.kqueueFd, nil, e.events, nil)
 		if err != nil && err != syscall.Errno(0x4) {
-			fmt.Printf("netpoll.Polling: error : %s \n", err)
+			fmt.Printf("goserver.netpoll_unix.go: error : %s \n", err)
 			continue
 		}
 		for i := 0; i < eventCount; i++ { //遍历每个事件
 			event := e.events[i]
 			err := onEventTrigger(event.Ident, event.Filter)
 			if err != nil {
-				fmt.Printf("netpoll.Polling: error : %s \n", err)
+				fmt.Printf("goserver.netpoll_unix.go: error : %s \n", err)
 				return
 			}
 		}

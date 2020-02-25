@@ -20,9 +20,11 @@ func init() {
 		return
 	}
 	go func() {
+		// buf := bufio.NewReader(os.Stdin)
 		for {
 			fmt.Printf("当前协程数:%d\n", runtime.NumGoroutine())
 			time.Sleep(time.Second)
+			// buf.ReadLine()
 		}
 	}()
 	fmt.Println(runtime.GOOS)

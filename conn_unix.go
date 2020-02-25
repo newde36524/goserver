@@ -9,7 +9,7 @@ import (
 
 //OnWriteable .
 func (c Conn) OnWriteable() {
-	c.option.Logger.Info("conn_unix.go: do nothing")
+	c.option.Logger.Info("goserver.conn_unix.go: do nothing")
 }
 
 //OnReadable 服务端建立的连接处理方法
@@ -24,7 +24,7 @@ func (c Conn) OnReadable() {
 //OnRecvTimeHandler .
 func (c Conn) OnRecvTimeHandler() {
 	if time.Now().Sub(c.readTime) > c.option.RecvTimeOut {
-		c.Close("conn recv data timeout")
+		c.Close("goserver.conn_unix.go: conn recv data timeout")
 	}
 }
 

@@ -67,7 +67,7 @@ func (e *netPoll) Polling() {
 	e.polling(func(fd uint64, event uint32) error {
 		evh := e.eventAdapter.Get(fd)
 		if evh == nil {
-			fmt.Printf("netpoll.Polling: no fd %d \n", fd)
+			fmt.Printf("goserver.netpoll_linux.go: no fd %d \n", fd)
 			return nil
 		}
 		//在协程池中运行要保证同一个通道下的通信是串行的
@@ -89,14 +89,14 @@ func (e *netPoll) polling(onEventTrigger func(fd uint64, events uint32) error) {
 		// epoll原理就是通过中断来通知内核的，而客户端断开连接就使得文件描述符处于中断状态
 		eventCount, err := syscall.EpollWait(e.epfd, e.events, -1)
 		if err != nil && err != syscall.Errno(0x4) {
-			fmt.Printf("netpoll.Polling: error : %s \n", err)
+			fmt.Printf("goserver.netpoll_linux.go: error : %s \n", err)
 			continue
 		}
 		for i := 0; i < eventCount; i++ {
 			event := e.events[i]
 			err := onEventTrigger(uint64(event.Fd), event.Events)
 			if err != nil {
-				fmt.Printf("netpoll.Polling: error : %s \n", err)
+				fmt.Printf("goserver.netpoll_linux.go: error : %s \n", err)
 				return
 			}
 		}

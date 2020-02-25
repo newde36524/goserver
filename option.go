@@ -22,7 +22,7 @@ func initOptions(opts ...ModOption) *ConnOption {
 		sendTimeOut               time.Duration
 		handTimeOut               time.Duration
 		maxWaitCountByHandTimeOut int
-		ParallelSize              = 1024
+		ParallelSize              = 10000
 		MaxGopollExpire           = 10 * time.Second
 	)
 	opt := &ConnOption{
@@ -37,19 +37,19 @@ func initOptions(opts ...ModOption) *ConnOption {
 		o(opt)
 	}
 	if opt.RecvTimeOut == recvTimeOut {
-		panic("goserver: recvTimeOut option not set")
+		panic("goserver.option.go: recvTimeOut option not set")
 	}
 	if opt.SendTimeOut == recvTimeOut {
-		panic("goserver: sendTimeOut option not set")
+		panic("goserver.option.go: sendTimeOut option not set")
 	}
 	if opt.HandTimeOut == recvTimeOut {
-		panic("goserver: handTimeOut option not set")
+		panic("goserver.option.go: handTimeOut option not set")
 	}
 	if opt.MaxWaitCountByHandTimeOut < maxWaitCountByHandTimeOut {
-		panic("goserver: The maxWaitCountByHandTimeOut value must be greater than or equal to 1")
+		panic("goserver.option.go: The maxWaitCountByHandTimeOut value must be greater than or equal to 1")
 	}
 	if opt.ParallelSize < 1 {
-		panic("goserver: The parallelSize value must be greater than or equal to 1")
+		panic("goserver.option.go: The parallelSize value must be greater than or equal to 1")
 	}
 	return opt
 }

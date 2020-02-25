@@ -8,11 +8,12 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"time"
 )
 
 const (
 	head     byte   = 0x7E
-	serverIP string = "localhost:12336"
+	serverIP string = "192.168.1.156:12336"
 )
 
 //Packet .
@@ -29,7 +30,7 @@ func main() {
 			fmt.Println(e)
 		}
 	}()
-	for i := 10000; i < 10090; i++ {
+	for i := 10000; i < 21301; i++ {
 		temp := i
 		connection, err := CreateTCPConn(serverIP)
 		if err != nil {
@@ -56,7 +57,7 @@ func main() {
 				pData = []byte(fmt.Sprintf("Client:%d,心跳:第%d次心跳", num, count))
 				SendTCPCMD(conn, Packet{head, msgID, cmdType, pData})
 				ReceivTCPCMD(connection, count)
-				// time.Sleep(1 * time.Second)
+				time.Sleep(1 * time.Second)
 				count++
 			}
 		}(connection, temp)

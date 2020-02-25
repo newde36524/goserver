@@ -40,35 +40,68 @@ func (s *Server) Binding(address string) {
 	//由于netPoll的特性,产生的任务允许丢弃
 	s.np = newNetpoll(maxEvents, newgPoll(s.ctx, 0, opt.MaxGopollExpire, opt.ParallelSize))
 	go s.np.Polling()
-	s.run()
-}
+	// s.run()
 
-func (s *Server) run() {
-	for {
-		conn, err := s.listener.Accept()
-		if err != nil {
-			s.opt.Logger.Error(err)
-			return
-		}
-		s.handleConnection(conn)
+	listenFd, err := netListenerToListenFD(listener)
+	if err != nil {
+		panic(err)
+	}
+	if err := s.np.Regist(listenFd, s); err != nil {
+		fmt.Println(err)
 	}
 }
 
-func (s *Server) handleConnection(rwc net.Conn) {
+// func (s *Server) run() {
+// 	for {
+// 		conn, err := s.listener.Accept()
+// 		if err != nil {
+// 			s.opt.Logger.Error(err)
+// 			return
+// 		}
+// 		s.handleConnection(conn)
+// 	}
+// }
+
+// func (s *Server) handleConnection(rwc net.Conn) {
+// 	connFd, err := netConnToConnFD(rwc)
+// 	if err != nil {
+// 		s.opt.Logger.Error(err)
+// 		return
+// 	}
+// 	// if err := syscall.SetNonblock(int(connFd), true); err != nil { //设置非阻塞模式
+// 	// 	os.Exit(1)
+// 	// }
+// 	conn := NewConn(s.ctx, rwc, *s.opt)
+// 	conn.UsePipe(s.pipe)
+// 	conn.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, conn, next) })
+// 	if err := s.np.Regist(connFd, conn); err != nil {
+// 		fmt.Println(err)
+// 	}
+// }
+
+//OnReadable .
+func (s *Server) OnReadable() {
+	rwc, err := s.listener.Accept()
+	if err != nil {
+		s.opt.Logger.Error(err)
+		return
+	}
 	connFd, err := netConnToConnFD(rwc)
 	if err != nil {
 		s.opt.Logger.Error(err)
 		return
 	}
-	// if err := syscall.SetNonblock(int(connFd), true); err != nil { //设置非阻塞模式
-	// 	os.Exit(1)
-	// }
 	conn := NewConn(s.ctx, rwc, *s.opt)
 	conn.UsePipe(s.pipe)
 	conn.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, conn, next) })
 	if err := s.np.Regist(connFd, conn); err != nil {
 		fmt.Println(err)
 	}
+}
+
+//OnWriteable .
+func (s *Server) OnWriteable() {
+	s.opt.Logger.Info("goserver.server_unix.go: Server OnWriteable")
 }
 
 func netConnToConnFD(conn net.Conn) (connFD uint64, err error) {
@@ -88,7 +121,23 @@ func netConnToConnFD(conn net.Conn) (connFD uint64, err error) {
 			return connFD, nil
 		}
 	default:
-		return 0, errors.New("type can not get fd")
+		return 0, errors.New("goserver.server_unix.go: can not get fd")
+	}
+	return
+}
+
+func netListenerToListenFD(listener net.Listener) (listenFD uint64, err error) {
+	switch v := interface{}(listener).(type) {
+	case *net.TCPListener:
+		if raw, err := v.SyscallConn(); err == nil {
+			raw.Control(func(fd uintptr) {
+				listenFD = uint64(fd)
+			})
+		} else {
+			return 0, err
+		}
+	default:
+		return 0, errors.New("goserver.server_unix.go: can not get fd")
 	}
 	return
 }
