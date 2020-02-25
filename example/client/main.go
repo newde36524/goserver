@@ -13,7 +13,7 @@ import (
 
 const (
 	head     byte   = 0x7E
-	serverIP string = "192.168.1.156:12336"
+	serverIP string = "localhost:12336"
 )
 
 //Packet .
@@ -30,7 +30,7 @@ func main() {
 			fmt.Println(e)
 		}
 	}()
-	for i := 10000; i < 21301; i++ {
+	for i := 10000; i < 11501; i++ {
 		temp := i
 		connection, err := CreateTCPConn(serverIP)
 		if err != nil {
