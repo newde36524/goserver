@@ -16,20 +16,24 @@ issure:
 	3.
 */
 
+//TimeWheel .
 type TimeWheel struct {
 	data []map[time.Time]interface{}
 }
 
+//Regist .
 func (t *TimeWheel) Regist(fd int, d time.Time, handle interface{}) {
 	t.data = append(t.data, map[time.Time]interface{}{
 		d: handle,
 	})
 }
 
+//Remove .
 func (*TimeWheel) Remove(fd int) {
 
 }
 
+//Brush .
 func (*TimeWheel) Brush(fd int, d time.Duration) {
 
 }

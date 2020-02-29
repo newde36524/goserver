@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	EPOLLET   = 1 << 31
+	// EPOLLET   = 1 << 31
 	maxEvents = 1000000
 )
 
