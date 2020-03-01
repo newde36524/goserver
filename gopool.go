@@ -85,12 +85,10 @@ func (g *gItem) DoOrInChan(task func()) bool {
 
 func (g *gItem) worker() {
 	timer := time.NewTimer(g.exp)
-	defer timer.Stop()
 	defer func() {
-		select {
-		case <-g.sign:
-		default:
-		}
+		timer.Stop()
+		close(g.tasks)
+		close(g.sign)
 		if g.onExit != nil {
 			g.onExit()
 		}
