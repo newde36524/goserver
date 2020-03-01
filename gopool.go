@@ -99,7 +99,10 @@ func (g *gItem) worker() {
 		select {
 		case <-g.ctx.Done():
 			return
-		case task := <-g.tasks: //执行任务优先
+		case task, ok := <-g.tasks: //执行任务优先
+			if !ok {
+				return
+			}
 			//timer.Reset(g.exp)
 			/*
 				1) 如果重置时间,那么会在任务全部处理完成后继续等待过期,虽然空闲等待是一种资源浪费,但这主要用于复用当前协程对任务队列的执行
