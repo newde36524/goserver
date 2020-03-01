@@ -38,13 +38,7 @@ func (g *gPool) SchduleByKey(key interface{}, task func()) bool {
 	case <-g.ctx.Done():
 		return false
 	case g.sign <- struct{}{}:
-		gItem := newgItem(g.ctx, g.taskNum, g.exp, func() {
-			g.m.Delete(key)
-			select {
-			case <-g.sign:
-			default:
-			}
-		})
+		gItem := newgItem(g.ctx, g.taskNum, g.exp, func() { g.m.Delete(key) })
 		g.m.Store(key, gItem)
 		return gItem.DoOrInChan(task)
 	}
@@ -108,7 +102,9 @@ func (g *gItem) worker() {
 				3) 个人认为,不重置时间可均衡各个任务队列之间的任务调度
 				4) 应根据实际应用场景设置过期时间,并且时间一般不宜过长,在3~5秒左右
 			*/
-			task()
+			if task != nil {
+				task()
+			}
 		case <-timer.C:
 			return
 		}
