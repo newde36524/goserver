@@ -6,8 +6,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"runtime/debug"
-	"time"
 )
 
 //Server tcp服务器
@@ -20,51 +18,105 @@ type Server struct {
 	ctx       context.Context
 	listener  net.Listener
 	cancle    func()
+	np        *netPoll
 }
+
+// //Binding start server
+// func (s *Server) Binding(address string) {
+// 	listener, err := net.Listen(s.network, address)
+// 	if err != nil {
+// 		return
+// 	}
+// 	opt := initOptions(s.modOption)
+// 	s.opt = opt
+// 	s.listener = listener
+// 	go s.run()
+// }
+
+// func (s *Server) run() {
+// 	defer func() {
+// 		defer recover()
+// 		if err := recover(); err != nil {
+// 			if s.opt.Logger != nil {
+// 				s.opt.Logger.Error(err)
+// 				s.opt.Logger.Error(string(debug.Stack()))
+// 			} else {
+// 				fmt.Println(err)
+// 				fmt.Println(string(debug.Stack()))
+// 			}
+// 		}
+// 		s.cancle()
+// 		s.listener.Close()
+// 	}()
+// 	for {
+// 		conn, err := s.listener.Accept()
+// 		if err != nil {
+// 			s.opt.Logger.Error(err)
+// 			<-time.After(time.Second)
+// 			continue
+// 		}
+// 		s.handleConnection(conn)
+// 	}
+// }
+
+// func (s *Server) handleConnection(rwc net.Conn) {
+// 	conn := NewConn(s.ctx, rwc, *s.opt)
+// 	conn.UsePipe(s.pipe)
+// 	if s.isDebug {
+// 		conn.UseDebug()
+// 	}
+// 	conn.Run()
+// }
+const (
+	// EPOLLET   = 1 << 31
+	maxEvents = 1000000
+)
 
 //Binding start server
 func (s *Server) Binding(address string) {
 	listener, err := net.Listen(s.network, address)
 	if err != nil {
-		return
+		panic(err)
 	}
 	opt := initOptions(s.modOption)
-	s.opt = opt
 	s.listener = listener
-	go s.run()
-}
+	s.opt = opt
+	//协程池的perItemTaskNum设置为0防止netPoll重复生成任务,为0时并不会阻塞协程池任务调度
+	//由于netPoll的特性,产生的任务允许丢弃
+	s.np = newNetpoll(maxEvents, newgPoll(s.ctx, 0, opt.MaxGopollExpire, opt.ParallelSize))
+	go s.np.Polling()
+	// s.run()
 
-func (s *Server) run() {
-	defer func() {
-		defer recover()
-		if err := recover(); err != nil {
-			if s.opt.Logger != nil {
-				s.opt.Logger.Error(err)
-				s.opt.Logger.Error(string(debug.Stack()))
-			} else {
-				fmt.Println(err)
-				fmt.Println(string(debug.Stack()))
-			}
-		}
-		s.cancle()
-		s.listener.Close()
-	}()
-	for {
-		conn, err := s.listener.Accept()
-		if err != nil {
-			s.opt.Logger.Error(err)
-			<-time.After(time.Second)
-			continue
-		}
-		s.handleConnection(conn)
+	listenFd, err := netListenerToListenFD(listener)
+	if err != nil {
+		panic(err)
+	}
+	if err := s.np.Regist(listenFd, s); err != nil {
+		fmt.Println(err)
 	}
 }
 
-func (s *Server) handleConnection(rwc net.Conn) {
+//OnReadable .
+func (s *Server) OnReadable() {
+	rwc, err := s.listener.Accept()
+	if err != nil {
+		s.opt.Logger.Error(err)
+		return
+	}
+	connFd, err := netConnToConnFD(rwc)
+	if err != nil {
+		s.opt.Logger.Error(err)
+		return
+	}
 	conn := NewConn(s.ctx, rwc, *s.opt)
 	conn.UsePipe(s.pipe)
-	if s.isDebug {
-		conn.UseDebug()
+	conn.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, conn, next) })
+	if err := s.np.Regist(connFd, conn); err != nil {
+		fmt.Println(err)
 	}
-	conn.Run()
+}
+
+//OnWriteable .
+func (s *Server) OnWriteable() {
+	s.opt.Logger.Info("goserver.server_unix.go: Server OnWriteable")
 }

@@ -28,7 +28,7 @@ func newNetpoll(maxEvents int, gPool *gPool) *netPoll {
 	}
 }
 
-//Register .
+//Regist .
 func (e *netPoll) Regist(fd uint64, evh eventHandle) error {
 	if err := syscall.EpollCtl(e.epfd, syscall.EPOLL_CTL_ADD, int(fd), &syscall.EpollEvent{
 		Events: syscall.EPOLLIN,

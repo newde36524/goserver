@@ -1,6 +1,10 @@
 package goserver
 
-import "context"
+import (
+	"context"
+	"errors"
+	"net"
+)
 
 //TCPServer create tcp server
 func TCPServer(modOption ModOption) (*Server, error) {
@@ -35,4 +39,42 @@ func (s *Server) UsePipe(p ...Pipe) Pipe {
 //UseDebug 开启debug日志
 func (s *Server) UseDebug() {
 	s.isDebug = true
+}
+
+func netConnToConnFD(conn net.Conn) (connFD uint64, err error) {
+	switch v := interface{}(conn).(type) {
+	case *net.TCPConn:
+		if raw, err := v.SyscallConn(); err == nil {
+			raw.Control(func(fd uintptr) {
+				connFD = uint64(fd)
+			})
+			return connFD, nil
+		}
+	case *net.UDPConn:
+		if raw, err := v.SyscallConn(); err == nil {
+			raw.Control(func(fd uintptr) {
+				connFD = uint64(fd)
+			})
+			return connFD, nil
+		}
+	default:
+		return 0, errors.New("goserver.server_unix.go: can not get fd")
+	}
+	return
+}
+
+func netListenerToListenFD(listener net.Listener) (listenFD uint64, err error) {
+	switch v := interface{}(listener).(type) {
+	case *net.TCPListener:
+		if raw, err := v.SyscallConn(); err == nil {
+			raw.Control(func(fd uintptr) {
+				listenFD = uint64(fd)
+			})
+		} else {
+			return 0, err
+		}
+	default:
+		return 0, errors.New("goserver.server_unix.go: can not get fd")
+	}
+	return
 }

@@ -49,7 +49,7 @@ func newNetpoll(maxEvents int, gPool *gPool) *netPoll {
 	}
 }
 
-//Register .
+//Regist .
 func (e *netPoll) Regist(fd uint64, evh eventHandle) error {
 	changes := append([]syscall.Kevent_t{},
 		// syscall.Kevent_t{

@@ -7,6 +7,21 @@ import (
 	"time"
 )
 
+//OnWriteable .
+func (c Conn) OnWriteable() {
+	c.option.Logger.Info("goserver.conn_unix.go: do nothing")
+}
+
+//OnReadable 服务端建立的连接处理方法
+func (c Conn) OnReadable() {
+	c.option.Logger.Info("goserver.conn_unix.go: do nothing")
+	// c.readTime = time.Now()
+	// pch := <-c.readPacketOne()
+	// if pch != nil {
+	// 	c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnMessage(ctx, c, pch, next) })
+	// }
+}
+
 //Run start run server and receive and handle and send packet
 func (c Conn) Run() {
 	go c.safeFn(func() {
