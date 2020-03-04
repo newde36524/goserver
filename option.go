@@ -22,16 +22,16 @@ func initOptions(opts ...ModOption) *ConnOption {
 		sendTimeOut               time.Duration
 		handTimeOut               time.Duration
 		maxWaitCountByHandTimeOut int
-		ParallelSize              = 10000
-		MaxGopollExpire           = 10 * time.Second
+		parallelSize              = 10000
+		maxGopollExpire           = time.Second
 	)
 	opt := &ConnOption{
 		RecvTimeOut:               recvTimeOut,
 		SendTimeOut:               sendTimeOut,
 		HandTimeOut:               handTimeOut,
 		MaxWaitCountByHandTimeOut: 1,
-		ParallelSize:              ParallelSize,
-		MaxGopollExpire:           MaxGopollExpire,
+		ParallelSize:              parallelSize,
+		MaxGopollExpire:           maxGopollExpire,
 	}
 	for _, o := range opts {
 		o(opt)
