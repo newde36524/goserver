@@ -11,6 +11,7 @@ type netPoll struct {
 	handle       syscall.Handle
 	eventAdapter eventAdapter
 	gPool        *gPool
+	complateKey  uint32
 }
 
 //newNetpoll .
@@ -28,7 +29,7 @@ func newNetpoll(maxEvents int, gPool *gPool) *netPoll {
 
 //Regist .
 func (e *netPoll) Regist(fd uint64, evh eventHandle) error {
-	handle, err := syscall.CreateIoCompletionPort(syscall.Handle(fd), e.handle, 0, 0)
+	handle, err := syscall.CreateIoCompletionPort(syscall.Handle(fd), e.handle, e.complateKey, 0)
 	if err != nil {
 		return err
 	}
@@ -72,11 +73,10 @@ func (e *netPoll) Polling() {
 func (e *netPoll) polling(onEventTrigger func(fd uint64, events uint32) error) {
 	fmt.Println("=========================")
 	bufLen := uint32(0)
-	var ctxID uint32
-	var overlapped **syscall.Overlapped
+	overlapped := new(syscall.Overlapped)
 	for {
 		fmt.Println("1")
-		err := syscall.GetQueuedCompletionStatus(e.handle, &bufLen, &ctxID, overlapped, syscall.INFINITE)
+		err := syscall.GetQueuedCompletionStatus(e.handle, &bufLen, &e.complateKey, &overlapped, 1000) // syscall.INFINITE
 		fmt.Println("2")
 		if err != nil {
 			fmt.Printf("syscall.GetQueuedCompletionStatus: %v\n", err)
