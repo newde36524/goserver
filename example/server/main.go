@@ -39,14 +39,9 @@ func init() {
 func main() {
 	address := "0.0.0.0:12336"
 	server, err := goserver.TCPServer(goserver.ModOption(func(opt *goserver.ConnOption) {
-		logger, err := goserver.NewDefaultLogger()
-		if err != nil {
-			fmt.Println(err)
-		}
 		opt.SendTimeOut = time.Minute //发送消息包超时时间
 		opt.RecvTimeOut = time.Minute //接收消息包超时时间
 		opt.HandTimeOut = time.Minute //处理消息包超时时间
-		opt.Logger = logger           //日志打印对象
 		// opt.ParallelSize = 10
 		// opt.MaxGopollExpire = 3 * time.Second
 	}))
@@ -56,7 +51,7 @@ func main() {
 	server.UsePipe().
 		// Regist(new(customer.LogHandle)).
 		Regist(new(customer.RootHandle))
-	// Regist(handle.NewTraceHandle())
+	// Regist(customer.NewTraceHandle())
 	server.UseDebug()
 	server.Binding(address)
 	logs.Infof("服务器开始监听...  监听地址:%s", address)

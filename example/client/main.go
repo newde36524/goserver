@@ -37,6 +37,7 @@ func main() {
 			log.Println(err)
 			continue
 		}
+		fmt.Println("connection")
 		go func(conn net.Conn, num int) {
 			defer recover()
 			var msgID uint16 = 100
@@ -44,7 +45,11 @@ func main() {
 			start := "AAAAAAAAAA"
 			end := "BBBBBBBBB"
 			pData := []byte(start + strconv.Itoa(num) + end)
-			SendTCPCMD(connection, Packet{head, msgID, cmdType, pData})
+			err := SendTCPCMD(connection, Packet{head, msgID, cmdType, pData})
+			if err != nil {
+				fmt.Println(err)
+			}
+			fmt.Println("send")
 			ReceivTCPCMD(connection, 0)
 			cmdType = byte(0x01)
 			count := 0

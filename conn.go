@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 )
-
+ 
 //Conn net.Conn proxy object
 type Conn struct {
 	rwc      net.Conn        //row connection
@@ -39,14 +39,16 @@ func NewConn(ctx context.Context, rwc net.Conn, opt ConnOption) Conn {
 
 func (c Conn) valid() {
 	if c.option.MaxWaitCountByHandTimeOut <= 0 {
-		panic("goserver.Conn.valid: option.MaxWaitCountByHandTimeOut不允许设置为0,这会导致无法处理数据包")
+		panicError("conn.go: option.MaxWaitCountByHandTimeOut不允许设置为0,这会导致无法处理数据包")
 	}
 }
 
 //UseDebug open inner debug log
-func (c *Conn) UseDebug() {
-	if c.isDebug = c.option.Logger != nil; !c.isDebug {
-		fmt.Println("goserver.Conn.UseDebug: c.option.Logger is nil")
+func (c *Conn) UseDebug(b ...bool) {
+	if len(b) == 0 {
+		c.isDebug = true
+	} else {
+		c.isDebug = b[0]
 	}
 }
 
@@ -86,7 +88,7 @@ func (c Conn) Read(b []byte) (n int, err error) {
 func (c Conn) Write(p Packet) (err error) {
 	if p == nil {
 		if c.isDebug {
-			c.option.Logger.Debugf("%s: goserver.Conn.Write: packet is nil,do nothing", c.RemoteAddr())
+			logDebug(fmt.Sprintf("conn.go:%s conn.Write: packet is nil,do nothing", c.RemoteAddr()))
 		}
 		return
 	}
@@ -124,9 +126,9 @@ func (c Conn) safeFn(fn func()) {
 		if err := recover(); err != nil {
 			defer recover()
 			c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnPanic(ctx, c, err.(error), next) })
-			if c.option.Logger != nil {
-				c.option.Logger.Errorf("goserver.Conn.safeFn: %s", err)
-				c.option.Logger.Errorf("goserver.Conn.safeFn: %s", string(debug.Stack()))
+			if c.isDebug {
+				logError(fmt.Sprintf("conn.go:conn.safeFn: %s", err))
+				logError(fmt.Sprintf("conn.safeFn: %s", string(debug.Stack())))
 			}
 		}
 	}()

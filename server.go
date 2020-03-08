@@ -6,6 +6,10 @@ import (
 	"net"
 )
 
+var (
+	errorFdNotfound = errors.New("server_unix.go: can not get fd")
+)
+
 //TCPServer create tcp server
 func TCPServer(modOption ModOption) (*Server, error) {
 	return New("tcp", modOption)
@@ -13,8 +17,7 @@ func TCPServer(modOption ModOption) (*Server, error) {
 
 //New new server
 //@network network 类型，具体参照ListenUDP ListenTCP等
-//@addr local address
-//@opt connection options
+//@modOption to set option
 func New(network string, modOption ModOption) (srv *Server, err error) {
 	// runtime.GOMAXPROCS(runtime.NumCPU())
 	srv = &Server{
@@ -58,7 +61,7 @@ func netConnToConnFD(conn net.Conn) (connFD uint64, err error) {
 			return connFD, nil
 		}
 	default:
-		return 0, errors.New("goserver.server_unix.go: can not get fd")
+		return 0, errorFdNotfound
 	}
 	return
 }
@@ -74,7 +77,7 @@ func netListenerToListenFD(listener net.Listener) (listenFD uint64, err error) {
 			return 0, err
 		}
 	default:
-		return 0, errors.New("goserver.server_unix.go: can not get fd")
+		return 0, errorFdNotfound
 	}
 	return
 }

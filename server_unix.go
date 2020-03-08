@@ -4,7 +4,6 @@ package goserver
 
 import (
 	"context"
-	"fmt"
 	"net"
 )
 
@@ -30,7 +29,7 @@ type Server struct {
 func (s *Server) Binding(address string) {
 	listener, err := net.Listen(s.network, address)
 	if err != nil {
-		panic(err)
+		panicError(err.Error())
 	}
 	opt := initOptions(s.modOption)
 	s.listener = listener
@@ -38,39 +37,38 @@ func (s *Server) Binding(address string) {
 	//协程池的perItemTaskNum设置为0防止netPoll重复生成任务,为0时并不会阻塞协程池任务调度
 	//由于netPoll的特性,产生的任务允许丢弃
 	s.np = newNetpoll(maxEvents, newgPoll(s.ctx, 0, opt.MaxGopollExpire, opt.ParallelSize))
-	go s.np.Polling()
-	// s.run()
-
 	listenFd, err := netListenerToListenFD(listener)
 	if err != nil {
-		panic(err)
+		panicError(err.Error())
 	}
 	if err := s.np.Regist(listenFd, s); err != nil {
-		fmt.Println(err)
+		logError(err.Error())
 	}
+	go s.np.Polling()
 }
 
 //OnReadable .
 func (s *Server) OnReadable() {
 	rwc, err := s.listener.Accept()
 	if err != nil {
-		s.opt.Logger.Error(err)
+		logError(err.Error())
 		return
 	}
 	connFd, err := netConnToConnFD(rwc)
 	if err != nil {
-		s.opt.Logger.Error(err)
+		logError(err.Error())
 		return
 	}
 	conn := NewConn(s.ctx, rwc, *s.opt)
+	conn.UseDebug(s.isDebug)
 	conn.UsePipe(s.pipe)
 	conn.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, conn, next) })
 	if err := s.np.Regist(connFd, conn); err != nil {
-		fmt.Println(err)
+		logError(err.Error())
 	}
 }
 
 //OnWriteable .
 func (s *Server) OnWriteable() {
-	s.opt.Logger.Info("goserver.server_unix.go: Server OnWriteable")
+	logInfo("server_unix.go: Server OnWriteable")
 }
