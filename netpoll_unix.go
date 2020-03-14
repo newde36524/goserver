@@ -90,7 +90,7 @@ func (e *netPoll) Polling() {
 			logError(fmt.Sprintf("no fd %d \n", fd))
 			return nil
 		}
-		//在协程池中运行要保证同一个通道下的通信是串行的
+		//在协程池中运行要保证同一个FD下的通信是串行的
 		if isWriteEvent(events) {
 			e.gPool.SchduleByKey(fd, evh.OnWriteable)
 			// evh.OnWriteable()
@@ -109,7 +109,7 @@ func (e *netPoll) polling(onEventTrigger func(fd uint64, events int16) error) {
 			logError(err.Error())
 			continue
 		}
-		for i := 0; i < eventCount; i++ { //遍历每个事件
+		for i := 0; i < eventCount; i++ {
 			event := e.events[i]
 			err := onEventTrigger(event.Ident, event.Filter)
 			if err != nil {

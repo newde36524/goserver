@@ -14,15 +14,15 @@ const (
 
 //Server tcp服务器
 type Server struct {
-	isDebug   bool      //是否开始debug日志
-	pipe      Pipe      //连接处理程序管道
-	network   string    //网络
-	modOption ModOption //连接配置项
-	listener  net.Listener
-	opt       *ConnOption
-	np        *netPoll
-	ctx       context.Context
-	cancle    func()
+	isDebug   bool            //是否开始debug日志
+	pipe      Pipe            //连接处理程序管道
+	network   string          //网络
+	modOption ModOption       //连接配置项
+	listener  net.Listener    //.
+	opt       *ConnOption     //.
+	np        *netPoll        //.
+	ctx       context.Context //.
+	cancle    func()          //.
 }
 
 //Binding start server
@@ -70,5 +70,5 @@ func (s *Server) OnReadable() {
 
 //OnWriteable .
 func (s *Server) OnWriteable() {
-	logInfo("server_unix.go: Server OnWriteable")
+	logInfo("Server OnWriteable")
 }

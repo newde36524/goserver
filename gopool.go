@@ -100,7 +100,7 @@ func (g *gItem) worker() {
 		select {
 		case <-g.ctx.Done():
 			return
-		case task, ok := <-g.tasks: //执行任务优先
+		case task, ok := <-g.tasks:
 			if !ok {
 				return
 			}

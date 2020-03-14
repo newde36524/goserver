@@ -8,10 +8,10 @@ type (
 		ReadPacket(ctx context.Context, c Conn, next func(context.Context)) Packet   //read a packet
 		OnConnection(ctx context.Context, c Conn, next func(context.Context))        //handle on client is connect
 		OnMessage(ctx context.Context, c Conn, p Packet, next func(context.Context)) //handle on read a packet complate
-		OnRecvTimeOut(ctx context.Context, c Conn, next func(context.Context))       //handle on recv data timeout
-		OnHandTimeOut(ctx context.Context, c Conn, next func(context.Context))       //handle on handle data timeout
-		OnClose(ctx context.Context, state *ConnState, next func(context.Context))   //连接关闭时处理
-		OnPanic(ctx context.Context, c Conn, err error, next func(context.Context))  //Panic时处理
+		OnRecvTimeOut(ctx context.Context, c Conn, next func(context.Context))       //handle on recv data timeout,windows only
+		OnHandTimeOut(ctx context.Context, c Conn, next func(context.Context))       //handle on handle data timeout,windows only
+		OnClose(ctx context.Context, state *ConnState, next func(context.Context))   //handle on close connect
+		OnPanic(ctx context.Context, c Conn, err error, next func(context.Context))  //handle on panic
 	}
 
 	//BaseHandle .

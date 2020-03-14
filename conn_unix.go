@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	errReadPacket = errors.New("禁止在管道链路中重复读取生成Packet,在管道中读取数据帧,只能有一个管道返回Packet,其余只能返回nil")
+	errReadPacket = errors.New("read the first of packet from handle pipe only")
 )
 
 //OnWriteable .
@@ -37,7 +37,7 @@ func (c Conn) readPacketOne() Packet {
 	c.readTime = time.Now()
 	c.safeFn(func() {
 		c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) {
-			if p == nil { // read the first of packet from handle pipe only
+			if p == nil {
 				p = h.ReadPacket(ctx, c, next)
 			} else {
 				panicError(errReadPacket.Error())

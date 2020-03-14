@@ -2,11 +2,16 @@ package goserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
-	"runtime/debug"
 	"strings"
 	"time"
+)
+
+var (
+	//errMaxWaitCountByHandTimeOut .
+	errMaxWaitCountByHandTimeOut = errors.New("MaxWaitCountByHandTimeOut con not set zero,this will can not handle packet")
 )
 
 //Conn net.Conn proxy object
@@ -39,7 +44,7 @@ func NewConn(ctx context.Context, rwc net.Conn, opt ConnOption) Conn {
 
 func (c Conn) valid() {
 	if c.option.MaxWaitCountByHandTimeOut <= 0 {
-		panicError("option.MaxWaitCountByHandTimeOut不允许设置为0,这会导致无法处理数据包")
+		panicError(errMaxWaitCountByHandTimeOut.Error())
 	}
 }
 
@@ -88,7 +93,7 @@ func (c Conn) Read(b []byte) (n int, err error) {
 func (c Conn) Write(p Packet) (err error) {
 	if p == nil {
 		if c.isDebug {
-			logDebug(fmt.Sprintf("conn.go:%s conn.Write: packet is nil,do nothing", c.RemoteAddr()))
+			logDebug(fmt.Sprintf("%s packet is nil", c.RemoteAddr()))
 		}
 		return
 	}
@@ -120,10 +125,6 @@ func (c Conn) safeFn(fn func()) {
 		if err := recover(); err != nil {
 			defer recover()
 			c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnPanic(ctx, c, err.(error), next) })
-			if c.isDebug {
-				logError(fmt.Sprintf("conn.go:conn.safeFn: %s", err))
-				logError(fmt.Sprintf("conn.safeFn: %s", string(debug.Stack())))
-			}
 		}
 	}()
 	fn()

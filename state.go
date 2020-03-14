@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-//ConnState 连接状态
+//ConnState .
 type ConnState struct {
 	ActiveTime      time.Time   //开始活动时间
 	ComplateTime    time.Time   //结束活动时间
