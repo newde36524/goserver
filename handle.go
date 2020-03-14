@@ -18,6 +18,8 @@ type (
 	BaseHandle struct{}
 )
 
+var _ Handle = (*BaseHandle)(nil)
+
 //ReadPacket .
 func (h *BaseHandle) ReadPacket(ctx context.Context, c Conn, next func(context.Context)) Packet {
 	next(ctx)
