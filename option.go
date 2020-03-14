@@ -1,6 +1,22 @@
 package goserver
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var (
+	//ErrRecvTimeOutNotSet .
+	ErrRecvTimeOutNotSet = errors.New("recvTimeOut option not set")
+	//ErrSendTimeOutNotSet .
+	ErrSendTimeOutNotSet = errors.New("sendTimeOut option not set")
+	//ErrHandTimeOutOutNotSet .
+	ErrHandTimeOutOutNotSet = errors.New("handTimeOut option not set")
+	//ErrMaxWaitCountByHandTimeOut .
+	ErrMaxWaitCountByHandTimeOut = errors.New("the maxWaitCountByHandTimeOut value must be greater than or equal to 1")
+	//ErrParallelSize .
+	ErrParallelSize = errors.New("the parallelSize value must be greater than or equal to 1")
+)
 
 //ConnOption 连接配置项
 type ConnOption struct {
@@ -9,7 +25,7 @@ type ConnOption struct {
 	HandTimeOut               time.Duration //处理消息超时时间
 	MaxWaitCountByHandTimeOut int           //最大处理消息协程堆积数量 只在windows下有效
 	ParallelSize              int           //多连接触发事件并行处理数量
-	MaxGopollExpire           time.Duration //协程池声明周期
+	MaxGopollExpire           time.Duration //协程池协程生命周期
 }
 
 //ModOption .
@@ -36,19 +52,19 @@ func initOptions(opts ...ModOption) *ConnOption {
 		o(opt)
 	}
 	if opt.RecvTimeOut == recvTimeOut {
-		panicError("option.go: recvTimeOut option not set")
+		panicError(ErrRecvTimeOutNotSet.Error())
 	}
 	if opt.SendTimeOut == sendTimeOut {
-		panicError("option.go: sendTimeOut option not set")
+		panicError(ErrSendTimeOutNotSet.Error())
 	}
 	if opt.HandTimeOut == handTimeOut {
-		panicError("option.go: handTimeOut option not set")
+		panicError(ErrHandTimeOutOutNotSet.Error())
 	}
 	if opt.MaxWaitCountByHandTimeOut < maxWaitCountByHandTimeOut {
-		panicError("option.go: The maxWaitCountByHandTimeOut value must be greater than or equal to 1")
+		panicError(ErrMaxWaitCountByHandTimeOut.Error())
 	}
 	if opt.ParallelSize < 1 {
-		panicError("option.go: The parallelSize value must be greater than or equal to 1")
+		panicError(ErrParallelSize.Error())
 	}
 	return opt
 }

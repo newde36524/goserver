@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	errorFdNotfound = errors.New("server_unix.go: can not get fd")
+	errorFdNotfound = errors.New("can not get fd")
 )
 
 //TCPServer create tcp server

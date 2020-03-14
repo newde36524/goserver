@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 )
- 
+
 //Conn net.Conn proxy object
 type Conn struct {
 	rwc      net.Conn        //row connection
@@ -39,7 +39,7 @@ func NewConn(ctx context.Context, rwc net.Conn, opt ConnOption) Conn {
 
 func (c Conn) valid() {
 	if c.option.MaxWaitCountByHandTimeOut <= 0 {
-		panicError("conn.go: option.MaxWaitCountByHandTimeOut不允许设置为0,这会导致无法处理数据包")
+		panicError("option.MaxWaitCountByHandTimeOut不允许设置为0,这会导致无法处理数据包")
 	}
 }
 
@@ -104,18 +104,12 @@ func (c Conn) Write(p Packet) (err error) {
 
 //Close close connection
 func (c Conn) Close(msg ...string) {
-	defer func() {
-		select {
-		case <-c.ctx.Done():
-			c.rwc.SetDeadline(time.Time{}) //set deadline timeout 设置客户端链接超时，是至关重要的。否则，一个超慢或已消失的客户端，可能会泄漏文件描述符，并最终导致异常
-			c.rwc.Close()
-			c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnClose(ctx, c.state, next) })
-		}
-	}()
 	c.cancel()
 	c.state.Message = strings.Join(msg, ",")
 	c.state.ComplateTime = time.Now()
-
+	c.rwc.SetDeadline(time.Time{}) //set deadline timeout
+	c.rwc.Close()
+	c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnClose(ctx, c.state, next) })
 	// runtime.GC()         //强制GC      待定可能有问题
 	// debug.FreeOSMemory() //强制释放内存 待定可能有问题
 }

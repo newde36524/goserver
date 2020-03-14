@@ -11,6 +11,7 @@ type (
 		schedule(fn func(Handle, context.Context, func(context.Context)))
 	}
 
+	//pipeLine .
 	pipeLine struct {
 		ctx     context.Context
 		handles []Handle
@@ -24,6 +25,7 @@ func newPipe(ctx context.Context) Pipe {
 	}
 }
 
+//Regist .
 func (p *pipeLine) Regist(h Handle) Pipe {
 	p.handles = append(p.handles, h)
 	return p

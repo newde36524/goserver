@@ -2,30 +2,39 @@ package goserver
 
 import (
 	"fmt"
+	"runtime"
 )
 
 var (
-	logTemp      = "[goserver]:%s\n"
-	errlogTemp   = "[Error]" + logTemp + "%s"
-	infologTemp  = "[Info]" + logTemp + "%s"
-	debuglogTemp = "[Debug]" + logTemp + "%s"
+	infologTemp  = "[goserver][Info]%s:%d: %s\n"
+	debuglogTemp = "[goserver][Debug]%s:%d: %s\n"
+	errlogTemp   = "[goserver][Error]%s:%d: %s\n"
 )
+
+func getCallerDesc() (file string, line int) {
+	_, file, line, _ = runtime.Caller(2)
+	return
+}
 
 //logInfo .
 func logInfo(msg string) {
-	fmt.Printf(infologTemp, logTemp, msg)
+	file, line := getCallerDesc()
+	fmt.Printf(infologTemp, file, line, msg)
 }
 
 //logDebug .
 func logDebug(msg string) {
-	fmt.Printf(debuglogTemp, logTemp, msg)
+	file, line := getCallerDesc()
+	fmt.Printf(debuglogTemp, file, line, msg)
 }
 
 //logError .
 func logError(msg string) {
-	fmt.Printf(errlogTemp, logTemp, msg)
+	file, line := getCallerDesc()
+	fmt.Printf(errlogTemp, file, line, msg)
 }
 
 func panicError(msg string) {
-	panic(fmt.Sprintf(errlogTemp, msg))
+	file, line := getCallerDesc()
+	panic(fmt.Sprintf(errlogTemp, file, line, msg))
 }

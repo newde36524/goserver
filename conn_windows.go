@@ -24,7 +24,7 @@ import (
 // 	// }
 // }
 var (
-	errReadPacket = errors.New("conn_windows.go: 禁止在管道链路中重复读取生成Packet,在管道中读取数据帧,只能有一个管道返回Packet,其余只能返回nil")
+	errReadPacket = errors.New("禁止在管道链路中重复读取生成Packet,在管道中读取数据帧,只能有一个管道返回Packet,其余只能返回nil")
 )
 
 //Run start run server and receive and handle and send packet
@@ -69,7 +69,7 @@ func (c Conn) recv(size int) {
 	go c.safeFn(func() {
 		defer func() {
 			if c.isDebug {
-				logError(fmt.Sprintf("conn_windows.go:%s recv goruntinue exit", c.RemoteAddr()))
+				logError(fmt.Sprintf("%s: recv goruntinue exit", c.RemoteAddr()))
 			}
 		}()
 		recvTimer := time.NewTimer(c.option.RecvTimeOut)
