@@ -1,4 +1,9 @@
-package timer
+package goserver
+
+import (
+	"sync"
+	"time"
+)
 
 //entity .
 type entity struct {

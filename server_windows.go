@@ -11,14 +11,14 @@ import (
 
 //Server tcp服务器
 type Server struct {
-	isDebug   bool      //是否开始debug日志
-	pipe      Pipe      //连接处理程序管道
-	network   string    //网络
-	modOption ModOption //连接配置项
-	opt       *ConnOption
-	ctx       context.Context
-	listener  net.Listener
-	cancle    func()
+	isDebug   bool            //是否开始debug日志
+	pipe      Pipe            //连接处理程序管道
+	network   string          //网络
+	modOption ModOption       //连接配置项
+	opt       *ConnOption     //.
+	ctx       context.Context //.
+	listener  net.Listener    //.
+	cancle    func()          //.
 	// np        *netPoll
 }
 
