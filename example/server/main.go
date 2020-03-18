@@ -39,9 +39,9 @@ func init() {
 func main() {
 	address := "0.0.0.0:12336"
 	server, err := goserver.TCPServer(goserver.ModOption(func(opt *goserver.ConnOption) {
-		opt.SendTimeOut = time.Minute //发送消息包超时时间
-		opt.RecvTimeOut = time.Minute //接收消息包超时时间
-		opt.HandTimeOut = time.Minute //处理消息包超时时间
+		opt.SendTimeOut = time.Minute     //发送消息包超时时间
+		opt.RecvTimeOut = 5 * time.Second //接收消息包超时时间
+		opt.HandTimeOut = time.Minute     //处理消息包超时时间
 		// opt.ParallelSize = 10
 		// opt.MaxGopollExpire = 3 * time.Second
 	}))

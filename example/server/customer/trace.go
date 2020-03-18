@@ -19,7 +19,7 @@ func NewTraceHandle() goserver.Handle {
 }
 
 //OnMessage .
-func (h *traceHandle) OnMessage(ctx context.Context, conn goserver.Conn, p goserver.Packet, next func(context.Context)) {
+func (h *traceHandle) OnMessage(ctx context.Context, conn *goserver.Conn, p goserver.Packet, next func(context.Context)) {
 	next(ctx)
 	trace()
 }

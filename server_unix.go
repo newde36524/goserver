@@ -5,6 +5,7 @@ package goserver
 import (
 	"context"
 	"net"
+	"runtime/debug"
 )
 
 const (
@@ -14,15 +15,16 @@ const (
 
 //Server tcp服务器
 type Server struct {
-	isDebug   bool            //是否开始debug日志
-	pipe      Pipe            //连接处理程序管道
-	network   string          //网络
-	modOption ModOption       //连接配置项
-	listener  net.Listener    //.
-	opt       *ConnOption     //.
-	np        *netPoll        //.
-	ctx       context.Context //.
-	cancle    func()          //.
+	isDebug      bool            //是否开始debug日志
+	pipe         Pipe            //连接处理程序管道
+	network      string          //网络
+	modOption    ModOption       //连接配置项
+	loopTaskPool loopTaskPool    //定时任务池
+	listener     net.Listener    //.
+	opt          *ConnOption     //.
+	np           *netPoll        //.
+	ctx          context.Context //.
+	cancle       func()          //.
 }
 
 //Binding start server
@@ -66,6 +68,22 @@ func (s *Server) OnReadable() {
 	if err := s.np.Regist(connFd, conn); err != nil {
 		logError(err.Error())
 	}
+	s.loopTaskPool.Schdule(s.opt.RecvTimeOut, func(remove func()) {
+		defer func() {
+			if err := recover(); err != nil {
+				logError(err.(error).Error())
+				logError(string(debug.Stack()))
+			}
+		}()
+		if b := conn.IsRecvTimeOut(); b {
+			select {
+			case <-conn.ctx.Done():
+				remove()
+			default:
+				conn.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnRecvTimeOut(ctx, conn, next) })
+			}
+		}
+	})
 }
 
 //OnWriteable .

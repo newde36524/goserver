@@ -28,7 +28,7 @@ var (
 )
 
 //Run start run server and receive and handle and send packet
-func (c Conn) Run() {
+func (c *Conn) Run() {
 	c.safeFn(func() {
 		c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, c, next) })
 		c.recv(1)
@@ -36,7 +36,7 @@ func (c Conn) Run() {
 }
 
 //readPacket read a packet
-func (c Conn) readPacket(size int) <-chan Packet {
+func (c *Conn) readPacket(size int) <-chan Packet {
 	result := make(chan Packet, size)
 	go c.safeFn(func() {
 		defer close(result)
@@ -65,7 +65,7 @@ func (c Conn) readPacket(size int) <-chan Packet {
 }
 
 //recv create a receive only packet channel
-func (c Conn) recv(size int) {
+func (c *Conn) recv(size int) {
 	go c.safeFn(func() {
 		defer func() {
 			if c.isDebug {

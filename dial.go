@@ -12,7 +12,7 @@ func Dial(network, address string, opt ConnOption) (*Conn, error) {
 		return nil, err
 	}
 	conn := NewConn(context.Background(), rwc, opt)
-	return &conn, nil
+	return conn, nil
 }
 
 //DialTCP create tcp conn

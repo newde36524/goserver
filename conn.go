@@ -18,7 +18,7 @@ var (
 type Conn struct {
 	rwc      net.Conn        //row connection
 	option   ConnOption      //connection option object
-	state    *ConnState      //connection state
+	state    ConnState       //connection state
 	ctx      context.Context //global context
 	cancel   func()          //global context cancel function
 	isDebug  bool            //is open inner debug message flag
@@ -27,12 +27,12 @@ type Conn struct {
 }
 
 //NewConn return a wrap of raw conn
-func NewConn(ctx context.Context, rwc net.Conn, opt ConnOption) Conn {
-	c := Conn{
+func NewConn(ctx context.Context, rwc net.Conn, opt ConnOption) *Conn {
+	c := &Conn{
 		rwc:      rwc,
 		option:   opt,
 		readTime: time.Now(),
-		state: &ConnState{
+		state: ConnState{
 			ActiveTime: time.Now(),
 			RemoteAddr: rwc.RemoteAddr().String(),
 		},
@@ -42,7 +42,7 @@ func NewConn(ctx context.Context, rwc net.Conn, opt ConnOption) Conn {
 	return c
 }
 
-func (c Conn) valid() {
+func (c *Conn) valid() {
 	if c.option.MaxWaitCountByHandTimeOut <= 0 {
 		panicError(errMaxWaitCountByHandTimeOut.Error())
 	}
@@ -69,28 +69,28 @@ func (c *Conn) UsePipe(p ...Pipe) Pipe {
 }
 
 //RemoteAddr get remote client's ip address
-func (c Conn) RemoteAddr() string {
+func (c *Conn) RemoteAddr() string {
 	return c.rwc.RemoteAddr().String()
 }
 
 //LocalAddr get host ip address
-func (c Conn) LocalAddr() string {
+func (c *Conn) LocalAddr() string {
 	return c.rwc.LocalAddr().String()
 }
 
 //Raw get row connection
-func (c Conn) Raw() net.Conn {
+func (c *Conn) Raw() net.Conn {
 	return c.rwc
 }
 
 //Read read a data frame from connection
-func (c Conn) Read(b []byte) (n int, err error) {
+func (c *Conn) Read(b []byte) (n int, err error) {
 	c.rwc.SetReadDeadline(time.Now().Add(c.option.RecvTimeOut))
 	return c.rwc.Read(b)
 }
 
 //Write send a packet to remote connection
-func (c Conn) Write(p Packet) (err error) {
+func (c *Conn) Write(p Packet) (err error) {
 	if p == nil {
 		if c.isDebug {
 			logDebug(fmt.Sprintf("%s packet is nil", c.RemoteAddr()))
@@ -108,19 +108,19 @@ func (c Conn) Write(p Packet) (err error) {
 }
 
 //Close close connection
-func (c Conn) Close(msg ...string) {
+func (c *Conn) Close(msg ...string) {
 	c.cancel()
 	c.state.Message = strings.Join(msg, ",")
 	c.state.ComplateTime = time.Now()
 	c.rwc.SetDeadline(time.Time{}) //set deadline timeout
 	c.rwc.Close()
-	c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnClose(ctx, c.state, next) })
+	c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnClose(ctx, &c.state, next) })
 	// runtime.GC()         //强制GC      待定可能有问题
 	// debug.FreeOSMemory() //强制释放内存 待定可能有问题
 }
 
 //safeFn proxy agent,used to safe invoke and recover panic
-func (c Conn) safeFn(fn func()) {
+func (c *Conn) safeFn(fn func()) {
 	defer func() {
 		if err := recover(); err != nil {
 			defer recover()

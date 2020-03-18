@@ -48,9 +48,17 @@ func (l *loopTask) Start() {
 					})
 				}
 			)
-			if time.Now().Sub(entity.start) > entity.delay {
+			if time.Now().Sub(entity.start) >= entity.delay {
 				entity.start = time.Now()
 				entity.task(remove)
+			} else {
+				/*
+					1. start为内部指定当前时间,一定是递增的,这里退出避免无效遍历
+					2. 假设当前时间减去第一个任务为6分钟剩余,而delay为10分钟,那么只要再等待6分钟就足够了
+					3. 只针对于固定的时间间隔
+				*/
+				t.Reset(time.Now().Sub(entity.start))
+				break
 			}
 		}
 		t.Reset(l.delay)

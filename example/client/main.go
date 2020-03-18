@@ -60,9 +60,12 @@ func main() {
 				// 	return
 				// }
 				pData = []byte(fmt.Sprintf("Client:%d,心跳:第%d次心跳", num, count))
-				SendTCPCMD(conn, Packet{head, msgID, cmdType, pData})
+				err := SendTCPCMD(conn, Packet{head, msgID, cmdType, pData})
+				if err != nil {
+					return
+				}
 				ReceivTCPCMD(connection, count)
-				time.Sleep(1 * time.Second)
+				time.Sleep(6 * time.Second)
 				count++
 			}
 		}(connection, temp)

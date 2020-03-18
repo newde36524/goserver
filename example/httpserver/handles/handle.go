@@ -22,7 +22,7 @@ type RootHandle struct {
 }
 
 //ReadPacket .
-func (RootHandle) ReadPacket(ctx context.Context, conn goserver.Conn, next func(context.Context)) goserver.Packet {
+func (RootHandle) ReadPacket(ctx context.Context, conn *goserver.Conn, next func(context.Context)) goserver.Packet {
 	//todo 连接建立时处理,用于一些建立连接时,需要主动下发数据包的场景,可以在这里开启心跳协程,做登录验证等等
 	logs.Infof("%s: 对方好像对你很感兴趣呦", conn.RemoteAddr())
 	if req, err := http.ReadRequest(bufio.NewReader(conn.Raw())); err == nil {
