@@ -49,7 +49,7 @@ func (l *loopTask) Start() {
 				}
 			)
 			if time.Now().Sub(entity.start) >= entity.delay {
-				entity.start = time.Now()
+				entity.start = time.Now().Add(entity.delay)
 				entity.task(remove)
 			} else {
 				/*
