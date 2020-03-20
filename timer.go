@@ -61,7 +61,7 @@ func (l *loopTask) Start() {
 					3. 只针对于固定的时间间隔
 				*/
 				t.Reset(time.Now().Sub(entity.start))
-				break
+				return
 			}
 		}
 		t.Reset(l.delay)
