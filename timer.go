@@ -60,7 +60,7 @@ func (l *loopTask) Start() {
 					2. 假设当前时间减去第一个任务时间为6分钟剩余,而delay为10分钟,那么只要再等待4分钟就足够了
 					3. 只针对于固定的时间间隔
 				*/
-				t.Reset(time.Now().Sub(entity.start))
+				t.Reset(entity.delay - time.Now().Sub(entity.start))
 				return
 			}
 		}
