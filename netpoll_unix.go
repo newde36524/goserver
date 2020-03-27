@@ -8,11 +8,12 @@ import (
 )
 
 type netPoll struct {
-	kqueueFd     int
-	events       []syscall.Kevent_t
-	changes      []syscall.Kevent_t
-	eventAdapter eventAdapter
-	gPool        *gPool
+	kqueueFd int
+	events   []syscall.Kevent_t
+	changes  []syscall.Kevent_t
+	evhs     map[uint64]eventHandle
+	mu       sync.Mutex
+	gPool    *gPool
 }
 
 //newNetEpoll .
@@ -41,11 +42,11 @@ func newNetpoll(maxEvents int, gPool *gPool) *netPoll {
 		},
 	)
 	return &netPoll{
-		kqueueFd:     kqueueFd,
-		changes:      changes,
-		events:       make([]syscall.Kevent_t, maxEvents),
-		gPool:        gPool,
-		eventAdapter: newdefaultAdapter(),
+		kqueueFd: kqueueFd,
+		changes:  changes,
+		events:   make([]syscall.Kevent_t, maxEvents),
+		gPool:    gPool,
+		evhs:     make(map[uint64]eventHandle, 1024),
 	}
 }
 
@@ -65,13 +66,17 @@ func (e *netPoll) Regist(fd uint64, evh eventHandle) error {
 	if _, err := syscall.Kevent(e.kqueueFd, changes, nil, nil); err != nil {
 		return err
 	}
-	e.eventAdapter.Link(fd, evh)
+	e.mu.Lock()
+	e.evhs[fd] = evh
+	e.mu.Unlock()
 	return nil
 }
 
 //Remove .
 func (e *netPoll) Remove(fd uint64) {
-	e.eventAdapter.UnLink(fd)
+	e.mu.Lock()
+	delete(e.evhs, fd)
+	e.mu.Unlock()
 }
 
 //Polling .
@@ -85,7 +90,7 @@ func (e *netPoll) Polling() {
 		}
 	)
 	e.polling(func(fd uint64, events int16) error {
-		evh := e.eventAdapter.Get(fd)
+		evh := e.evhs[fd]
 		if evh == nil {
 			logError(fmt.Sprintf("no fd %d \n", fd))
 			return nil

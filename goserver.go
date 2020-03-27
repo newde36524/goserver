@@ -10,6 +10,14 @@ var (
 	errorFdNotfound = errors.New("can not get fd")
 )
 
+type (
+	//eventHandle .
+	eventHandle interface {
+		OnReadable()
+		OnWriteable()
+	}
+)
+
 //TCPServer create tcp server
 func TCPServer(modOption ModOption) (*Server, error) {
 	return New("tcp", modOption)

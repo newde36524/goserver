@@ -65,7 +65,7 @@ func main() {
 					return
 				}
 				ReceivTCPCMD(connection, count)
-				time.Sleep(6 * time.Second)
+				time.Sleep(1 * time.Second)
 				count++
 			}
 		}(connection, temp)
@@ -134,9 +134,7 @@ func ReceivTCPCMD(connection net.Conn, count int) error {
 		return nil
 	}
 	p, err := GetDeserializationPacket(slice[:len])
-	{
-		fmt.Println(string(p.pData))
-	}
+	fmt.Println(string(p.pData))
 	return err
 }
 

@@ -4,14 +4,16 @@ package goserver
 
 import (
 	"fmt"
+	"sync"
 	"syscall"
 )
 
 type netPoll struct {
-	epfd         int
-	events       []syscall.EpollEvent
-	eventAdapter eventAdapter
-	gPool        *gPool
+	epfd   int
+	events []syscall.EpollEvent
+	evhs   map[uint64]eventHandle
+	mu     sync.Mutex
+	gPool  *gPool
 }
 
 //newNetpoll .
@@ -21,10 +23,10 @@ func newNetpoll(maxEvents int, gPool *gPool) *netPoll {
 		panic(err)
 	}
 	return &netPoll{
-		epfd:         epfd,
-		events:       make([]syscall.EpollEvent, maxEvents),
-		gPool:        gPool,
-		eventAdapter: newdefaultAdapter(),
+		epfd:   epfd,
+		events: make([]syscall.EpollEvent, maxEvents),
+		gPool:  gPool,
+		evhs:   make(map[uint64]eventHandle, 1024),
 	}
 }
 
@@ -36,13 +38,17 @@ func (e *netPoll) Regist(fd uint64, evh eventHandle) error {
 	}); err != nil {
 		return err
 	}
-	e.eventAdapter.Link(uint64(fd), evh)
+	e.mu.Lock()
+	e.evhs[fd] = evh
+	e.mu.Unlock()
 	return nil
 }
 
 //Remove .
 func (e *netPoll) Remove(fd uint64) {
-	e.eventAdapter.UnLink(uint64(fd))
+	e.mu.Lock()
+	delete(e.evhs, fd)
+	e.mu.Unlock()
 }
 
 //Polling .
@@ -65,7 +71,7 @@ func (e *netPoll) Polling() {
 		}
 	)
 	e.polling(func(fd uint64, event uint32) error {
-		evh := e.eventAdapter.Get(fd)
+		evh := e.evhs[fd]
 		if evh == nil {
 			logError(fmt.Sprintf("no fd %d \n", fd))
 			return nil

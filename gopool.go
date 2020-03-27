@@ -14,7 +14,8 @@ type gPool struct {
 	ctx     context.Context
 	taskNum int
 	exp     time.Duration
-	m       sync.Map
+	gItems  map[interface{}]*gItem
+	mu      sync.Mutex
 	sign    chan struct{}
 }
 
@@ -24,14 +25,14 @@ func newgPoll(ctx context.Context, perItemTaskNum int, exp time.Duration, parall
 		taskNum: perItemTaskNum,
 		exp:     exp,
 		sign:    make(chan struct{}, parallelSize), //创建的协程池数量
+		gItems:  make(map[interface{}]*gItem, 1024),
 	}
 	return g
 }
 
 //SchduleByKey 为不同key值下的任务并行调用,相同key值下的任务串行调用,并行任务量和串行任务量由配置参数决定
 func (g *gPool) SchduleByKey(key interface{}, task func()) bool {
-	if v, ok := g.m.Load(key); ok { //希望在同一协程下顺序执行
-		gItem := v.(*gItem)
+	if gItem, ok := g.gItems[key]; ok { //希望在同一协程下顺序执行
 		return gItem.DoOrInChan(task)
 	}
 	select {
@@ -39,13 +40,17 @@ func (g *gPool) SchduleByKey(key interface{}, task func()) bool {
 		return false
 	case g.sign <- struct{}{}:
 		gItem := newgItem(g.ctx, g.taskNum, g.exp, func() {
-			g.m.Delete(key)
+			g.mu.Lock()
+			delete(g.gItems, key)
+			g.mu.Unlock()
 			select {
 			case <-g.sign:
 			default:
 			}
 		})
-		g.m.Store(key, gItem)
+		g.mu.Lock()
+		g.gItems[key] = gItem
+		g.mu.Unlock()
 		return gItem.DoOrInChan(task)
 	}
 }
@@ -77,7 +82,7 @@ func (g *gItem) DoOrInChan(task func()) bool {
 	select {
 	case g.sign <- struct{}{}:
 		go g.worker()
-		// runtime.Gosched()
+		runtime.Gosched()
 		return g.DoOrInChan(task)
 	default:
 	}
@@ -104,13 +109,6 @@ func (g *gItem) worker() {
 	}()
 	for {
 		select {
-		case <-g.ctx.Done():
-			return
-		default:
-		}
-		select {
-		case <-g.ctx.Done():
-			return
 		case task, ok := <-g.tasks:
 			if !ok {
 				return
@@ -120,17 +118,15 @@ func (g *gItem) worker() {
 				1) 如果重置时间,那么会在任务全部处理完成后继续等待过期,虽然空闲等待是一种资源浪费,但这主要用于复用当前协程对任务队列的执行
 				2) 如果不重置时间,那么会在任务队列为空时并且过期后退出协程
 				3) 个人认为,不重置时间可均衡各个任务队列之间的任务调度
-				4) 应根据实际应用场景设置过期时间,并且时间一般不宜过长,在3~5秒左右
+				4) 应根据实际应用场景设置过期时间,并且时间一般不宜过长,在1秒左右
 			*/
 			if task != nil {
 				task()
 			}
-		default:
-			select {
-			case <-timer.C:
-				return
-			default:
-			}
+		case <-g.ctx.Done():
+			return
+		case <-timer.C:
+			return
 		}
 	}
 }
