@@ -8,8 +8,6 @@ import (
 )
 
 //gPool .
-//针对key值进行并行调用的协程池,同一个key下的任务串行,不同key下的任务并行
-//实现协程池区分执行不同任务类型的调度
 type gPool struct {
 	ctx     context.Context
 	taskNum int
@@ -25,7 +23,7 @@ func newgPoll(ctx context.Context, perItemTaskNum int, exp time.Duration, parall
 		taskNum: perItemTaskNum,
 		exp:     exp,
 		sign:    make(chan struct{}, parallelSize), //创建的协程池数量
-		gItems:  make(map[interface{}]*gItem, 1024),
+		gItems:  make(map[interface{}]*gItem, parallelSize),
 	}
 	return g
 }
@@ -34,39 +32,40 @@ func newgPoll(ctx context.Context, perItemTaskNum int, exp time.Duration, parall
 func (g *gPool) SchduleByKey(key interface{}, task func()) bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if gItem, ok := g.gItems[key]; ok { //希望在同一协程下顺序执行
-		return gItem.DoOrInChan(task)
-	}
-	select {
-	case <-g.ctx.Done():
-		return false
-	case g.sign <- struct{}{}:
-		gItem := newgItem(g.ctx, g.taskNum, g.exp, func() {
-			g.mu.Lock()
-			delete(g.gItems, key)
-			g.mu.Unlock()
-			select {
-			case <-g.sign:
-			default:
+	gItem, ok := g.gItems[key]
+	if !ok {
+		select {
+		case <-g.ctx.Done():
+			return false
+		case g.sign <- struct{}{}:
+			onExit := func() {
+				g.mu.Lock()
+				delete(g.gItems, key)
+				g.mu.Unlock()
+				select {
+				case <-g.sign:
+				default:
+				}
 			}
-		})
-		g.gItems[key] = gItem
-		return gItem.DoOrInChan(task)
+			gItem = newgItem(g.ctx, g.taskNum, g.exp, onExit)
+			g.gItems[key] = gItem
+		}
 	}
+	return gItem.DoOrInChan(task)
 }
 
 type gItem struct {
 	tasks  chan func()     //任务通道
 	sign   chan struct{}   //是否加入任务通道信号
 	ctx    context.Context //退出协程信号
-	exp    time.Duration
-	onExit func()
+	exp    time.Duration   //协程退出时的间隔
+	onExit func()          //协程退出时将被调用
 }
 
 func newgItem(ctx context.Context, taskNum int, exp time.Duration, onExit func()) *gItem {
 	return &gItem{
 		tasks:  make(chan func(), taskNum),
-		sign:   make(chan struct{}, 1), //最多只创建一个协程
+		sign:   make(chan struct{}, 1), //这里最多只创建一个协程,后续可以根据实际场景修改
 		ctx:    ctx,
 		exp:    exp,
 		onExit: onExit,
