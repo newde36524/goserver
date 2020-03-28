@@ -4,6 +4,7 @@ package goserver
 
 import (
 	"fmt"
+	"sync"
 	"syscall"
 )
 
@@ -52,7 +53,7 @@ func newNetpoll(maxEvents int, gPool *gPool) *netPoll {
 
 //Regist .
 func (e *netPoll) Regist(fd uint64, evh eventHandle) error {
-	changes := append([]syscall.Kevent_t{},
+	e.changes = append(e.changes,
 		// syscall.Kevent_t{
 		// 	Ident: uint64(fd), Flags: syscall.NOTE_TRIGGER, Filter: syscall.EVFILT_USER,
 		// },
@@ -63,7 +64,7 @@ func (e *netPoll) Regist(fd uint64, evh eventHandle) error {
 			Ident: fd, Flags: syscall.EV_ADD, Filter: syscall.EVFILT_WRITE,
 		},
 	)
-	if _, err := syscall.Kevent(e.kqueueFd, changes, nil, nil); err != nil {
+	if _, err := syscall.Kevent(e.kqueueFd, e.changes, nil, nil); err != nil {
 		return err
 	}
 	e.mu.Lock()
@@ -73,10 +74,19 @@ func (e *netPoll) Regist(fd uint64, evh eventHandle) error {
 }
 
 //Remove .
-func (e *netPoll) Remove(fd uint64) {
+func (e *netPoll) Remove(fd uint64) (err error) {
 	e.mu.Lock()
+	defer e.mu.Unlock()
 	delete(e.evhs, fd)
-	e.mu.Unlock()
+	e.changes = append(e.changes,
+		syscall.Kevent_t{
+			Ident: uint64(fd), Flags: syscall.EV_DELETE, Filter: syscall.EVFILT_READ,
+		},
+		syscall.Kevent_t{
+			Ident: uint64(fd), Flags: syscall.EV_DELETE, Filter: syscall.EVFILT_WRITE,
+		},
+	)
+	return
 }
 
 //Polling .

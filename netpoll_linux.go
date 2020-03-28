@@ -45,10 +45,14 @@ func (e *netPoll) Regist(fd uint64, evh eventHandle) error {
 }
 
 //Remove .
-func (e *netPoll) Remove(fd uint64) {
+func (e *netPoll) Remove(fd uint64) (err error) {
+	if err := syscall.EpollCtl(e.epfd, syscall.EPOLL_CTL_DEL, int(fd), nil); err != nil {
+		return err
+	}
 	e.mu.Lock()
 	delete(e.evhs, fd)
 	e.mu.Unlock()
+	return
 }
 
 //Polling .
