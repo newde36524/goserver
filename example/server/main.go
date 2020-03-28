@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"os"
 	"runtime"
 	"time"
 
@@ -19,14 +21,16 @@ func init() {
 		<-time.After(10 * time.Second)
 		return
 	}
-	// go func() {
-	// 	// buf := bufio.NewReader(os.Stdin)
-	// 	for {
-	// 		fmt.Printf("当前协程数:%d\n", runtime.NumGoroutine())
-	// 		time.Sleep(time.Second)
-	// 		// buf.ReadLine()
-	// 	}
-	// }()
+	go func() {
+		buf := bufio.NewReader(os.Stdin)
+		for {
+			buf.ReadLine()
+			fmt.Printf("当前协程数:%d\n", runtime.NumGoroutine())
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			fmt.Printf("当前内存资源:%d KB\n", m.Alloc/1024)
+		}
+	}()
 	fmt.Println(runtime.GOOS)
 	// var rLimit syscall.Rlimit
 	// rLimit.Cur = 200000

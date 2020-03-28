@@ -32,6 +32,8 @@ func newgPoll(ctx context.Context, perItemTaskNum int, exp time.Duration, parall
 
 //SchduleByKey 为不同key值下的任务并行调用,相同key值下的任务串行调用,并行任务量和串行任务量由配置参数决定
 func (g *gPool) SchduleByKey(key interface{}, task func()) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	if gItem, ok := g.gItems[key]; ok { //希望在同一协程下顺序执行
 		return gItem.DoOrInChan(task)
 	}
@@ -48,9 +50,7 @@ func (g *gPool) SchduleByKey(key interface{}, task func()) bool {
 			default:
 			}
 		})
-		g.mu.Lock()
 		g.gItems[key] = gItem
-		g.mu.Unlock()
 		return gItem.DoOrInChan(task)
 	}
 }
@@ -82,7 +82,7 @@ func (g *gItem) DoOrInChan(task func()) bool {
 	select {
 	case g.sign <- struct{}{}:
 		go g.worker()
-		runtime.Gosched()
+		// runtime.Gosched()
 		return g.DoOrInChan(task)
 	default:
 	}

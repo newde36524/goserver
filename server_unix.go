@@ -51,6 +51,12 @@ func (s *Server) Binding(address string) {
 
 //OnReadable .
 func (s *Server) OnReadable() {
+	defer func() {
+		if err := recover(); err != nil {
+			logError(err.(error).Error())
+			logError(string(debug.Stack()))
+		}
+	}()
 	rwc, err := s.listener.Accept()
 	if err != nil {
 		logError(err.Error())
