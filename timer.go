@@ -91,10 +91,10 @@ func (l *loopTaskPool) Schdule(delay time.Duration, task func(remove func())) {
 	})
 	v := l.pool.Get()
 	l.pool.Put(&v)
+	l.mu.Lock()
 	v = l.loops[l.idx%len(l.loops)] //012012012012012
 	loopTask := v.(*loopTask)
 	loopTask.Add(delay, task)
-	l.mu.Lock()
 	l.idx++
 	l.mu.Unlock()
 }
