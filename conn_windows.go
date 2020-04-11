@@ -4,27 +4,8 @@ package goserver
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
-)
-
-// //OnWriteable .
-// func (c Conn) OnWriteable() {
-// 	c.option.Logger.Info(conn_unix.go: do nothing")
-// }
-
-// //OnReadable 服务端建立的连接处理方法
-// func (c Conn) OnReadable() {
-// 	c.option.Logger.Info(conn_unix.go: do nothing")
-// 	// c.readTime = time.Now()
-// 	// pch := <-c.readPacketOne()
-// 	// if pch != nil {
-// 	// 	c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnMessage(ctx, c, pch, next) })
-// 	// }
-// }
-var (
-	errReadPacket = errors.New("禁止在管道链路中重复读取生成Packet,在管道中读取数据帧,只能有一个管道返回Packet,其余只能返回nil")
 )
 
 //Run start run server and receive and handle and send packet
@@ -68,7 +49,7 @@ func (c *Conn) readPacket(size int) <-chan Packet {
 func (c *Conn) recv(size int) {
 	go c.safeFn(func() {
 		defer func() {
-			if c.isDebug {
+			if isDebug {
 				logError(fmt.Sprintf("%s: recv goruntinue exit", c.RemoteAddr()))
 			}
 		}()

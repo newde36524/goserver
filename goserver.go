@@ -2,12 +2,11 @@ package goserver
 
 import (
 	"context"
-	"errors"
 	"net"
 )
 
 var (
-	errorFdNotfound = errors.New("can not get fd")
+	isDebug bool //is open inner debug message flag
 )
 
 type (

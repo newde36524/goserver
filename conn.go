@@ -2,16 +2,10 @@ package goserver
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"strings"
 	"time"
-)
-
-var (
-	//errMaxWaitCountByHandTimeOut .
-	errMaxWaitCountByHandTimeOut = errors.New("MaxWaitCountByHandTimeOut con not set zero,this will can not handle packet")
 )
 
 //Conn net.Conn proxy object
@@ -21,7 +15,6 @@ type Conn struct {
 	state    ConnState       //connection state
 	ctx      context.Context //global context
 	cancel   func()          //global context cancel function
-	isDebug  bool            //is open inner debug message flag
 	pipe     Pipe            //connection handle pipeline
 	readTime time.Time       //connection read event trigger time
 }
@@ -51,9 +44,9 @@ func (c *Conn) valid() {
 //UseDebug open inner debug log
 func (c *Conn) UseDebug(b ...bool) {
 	if len(b) == 0 {
-		c.isDebug = true
+		isDebug = true
 	} else {
-		c.isDebug = b[0]
+		isDebug = b[0]
 	}
 }
 
@@ -92,7 +85,7 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 //Write send a packet to remote connection
 func (c *Conn) Write(p Packet) (err error) {
 	if p == nil {
-		if c.isDebug {
+		if isDebug {
 			logDebug(fmt.Sprintf("%s packet is nil", c.RemoteAddr()))
 		}
 		return

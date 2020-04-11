@@ -4,12 +4,7 @@ package goserver
 
 import (
 	"context"
-	"errors"
 	"time"
-)
-
-var (
-	errReadPacket = errors.New("read the first of packet from handle pipe only")
 )
 
 //OnWriteable .
