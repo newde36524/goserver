@@ -1,9 +1,12 @@
 package goserver
 
 var _ baseContext = (*baseContextImpl)(nil)
+var _ ConnectionContext = (*connectionContextImpl)(nil)
 var _ Context = (*contextImpl)(nil)
 var _ ReadContext = (*readContextImpl)(nil)
 var _ CloseContext = (*closeContextImpl)(nil)
+var _ PanicContext = (*panicContextImpl)(nil)
+var _ RecvTimeOutContext = (*recvTimeOutContextImpl)(nil)
 
 type (
 	//baseContext .
@@ -87,7 +90,7 @@ type (
 		baseContextImpl
 	}
 
-	recvTimeOutImpl struct {
+	recvTimeOutContextImpl struct {
 		baseContextImpl
 	}
 )
@@ -131,7 +134,7 @@ func newConnectionContext(conn *Conn) ConnectionContext {
 }
 
 func newRecvTimeOutContext(conn *Conn) RecvTimeOutContext {
-	return &recvTimeOutImpl{
+	return &recvTimeOutContextImpl{
 		baseContextImpl: newBaseContext(conn, nil),
 	}
 }
