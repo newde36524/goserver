@@ -70,7 +70,7 @@ func (s *Server) OnReadable() {
 	conn := NewConn(s.ctx, rwc, *s.opt)
 	conn.UseDebug(s.isDebug)
 	conn.UsePipe(s.pipe)
-	conn.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, conn, next) })
+	conn.pipe.schedule(func(h Handle, ctx interface{}) { h.OnConnection(ctx.(ConnectionContext)) }, newConnectionContext(conn))
 	if err := s.np.Regist(connFd, conn); err != nil {
 		logError(err.Error())
 	}
@@ -86,7 +86,7 @@ func (s *Server) OnReadable() {
 			case <-conn.ctx.Done():
 				remove()
 			default:
-				conn.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnRecvTimeOut(ctx, conn, next) })
+				conn.pipe.schedule(func(h Handle, ctx interface{}) { h.OnRecvTimeOut(ctx.(RecvTimeOutContext)) }, newRecvTimeOutContext(conn))
 			}
 		}
 	})

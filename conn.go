@@ -56,7 +56,7 @@ func (c *Conn) UsePipe(p ...Pipe) Pipe {
 		c.pipe = p[0]
 	}
 	if c.pipe == nil {
-		c.pipe = newPipe(c.ctx)
+		c.pipe = &pipeLine{}
 	}
 	return c.pipe
 }
@@ -107,7 +107,7 @@ func (c *Conn) Close(msg ...string) {
 	c.state.ComplateTime = time.Now()
 	c.rwc.SetDeadline(time.Time{}) //set deadline timeout
 	c.rwc.Close()
-	c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnClose(ctx, &c.state, next) })
+	c.pipe.schedule(func(h Handle, ctx interface{}) { h.OnClose(ctx.(CloseContext)) }, newCloseContext(c))
 	// runtime.GC()         //强制GC      待定可能有问题
 	// debug.FreeOSMemory() //强制释放内存 待定可能有问题
 }
@@ -117,7 +117,7 @@ func (c *Conn) safeFn(fn func()) {
 	defer func() {
 		if err := recover(); err != nil {
 			defer recover()
-			c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnPanic(ctx, c, err.(error), next) })
+			c.pipe.schedule(func(h Handle, ctx interface{}) { h.OnPanic(ctx.(PanicContext)) }, newPanicContext(c, err.(error)))
 		}
 	}()
 	fn()

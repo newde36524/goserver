@@ -2,7 +2,6 @@ package handles
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"io"
 	"mime/multipart"
@@ -16,16 +15,14 @@ import (
 	"github.com/issue9/logs"
 )
 
-//RootHandle tcpserver使用示例,回复相同的内容
+//RootHandle .
 type RootHandle struct {
 	goserver.BaseHandle
 }
 
 //ReadPacket .
-func (RootHandle) ReadPacket(ctx context.Context, conn *goserver.Conn, next func(context.Context)) goserver.Packet {
-	//todo 连接建立时处理,用于一些建立连接时,需要主动下发数据包的场景,可以在这里开启心跳协程,做登录验证等等
-	logs.Infof("%s: 对方好像对你很感兴趣呦", conn.RemoteAddr())
-	if req, err := http.ReadRequest(bufio.NewReader(conn.Raw())); err == nil {
+func (RootHandle) ReadPacket(ctx goserver.ReadContext) goserver.Packet {
+	if req, err := http.ReadRequest(bufio.NewReader(ctx.Conn().Raw())); err == nil {
 		r := Request{
 			Method:           req.Method,
 			URL:              req.URL,
@@ -62,8 +59,8 @@ func (RootHandle) ReadPacket(ctx context.Context, conn *goserver.Conn, next func
 	resp := appendResp(nil, "200 OK", "", "o huo~~~~~")
 	p := &goserver.P{}
 	p.SetBuffer(resp)
-	conn.Write(p)
-	conn.Close()
+	ctx.Conn().Write(p)
+	ctx.Conn().Close()
 	return nil
 }
 
@@ -89,6 +86,7 @@ func appendResp(b []byte, status, head, body string) []byte {
 	return b
 }
 
+//Request .
 type Request struct {
 	Method           string
 	URL              *url.URL

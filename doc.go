@@ -29,7 +29,7 @@
 	}
 
 	//ReadPacket .
-	func (RootHandle) ReadPacket(ctx context.Context, conn goserver.Conn, next func(context.Context)) goserver.Packet {
+	func (RootHandle) ReadPacket(ctx goserver.ReadContext) goserver.Packet {
 		defer next(ctx)
 		b := make([]byte, 1024)
 		n, _ := conn.Read(b)
@@ -37,17 +37,17 @@
 		return &p
 	}
 
-	func (RootHandle) OnConnection(ctx context.Context, conn goserver.Conn, next func(context.Context)) {
-		defer next(ctx)
+	func (RootHandle) OnConnection(ctx goserver.ConnectionContext) {
+		defer ctx.Next()
 	}
 
-	func (RootHandle) OnMessage(ctx context.Context, conn goserver.Conn, p goserver.Packet, next func(context.Context)) {
-		defer next(ctx)
+	func (RootHandle) OnMessage(ctx goserver.Context) {
+		defer ctx.Next()
 		conn.Write(p)
 	}
 
-	func (RootHandle) OnClose(ctx context.Context, state *goserver.ConnState, next func(context.Context)) {
-		defer next(ctx)
+	func (RootHandle) OnClose(ctx goserver.CloseContext) {
+		defer ctx.Next()
 	}
 */
 

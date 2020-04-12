@@ -8,7 +8,7 @@ type (
 	//Pipe .
 	Pipe interface {
 		Regist(h Handle) Pipe
-		schedule(fn func(Handle, context.Context, func(context.Context)))
+		schedule(fn func(h Handle, ctx interface{}), ctx interface{})
 	}
 
 	//pipeLine .
@@ -16,14 +16,12 @@ type (
 		ctx     context.Context
 		handles []Handle
 	}
-)
 
-//newPipe .
-func newPipe(ctx context.Context) Pipe {
-	return &pipeLine{
-		ctx: ctx,
+	//canNext .
+	canNext interface {
+		setNext(next func())
 	}
-}
+)
 
 //Regist .
 func (p *pipeLine) Regist(h Handle) Pipe {
@@ -32,15 +30,18 @@ func (p *pipeLine) Regist(h Handle) Pipe {
 }
 
 //schedule pipeline provider
-func (p *pipeLine) schedule(fn func(Handle, context.Context, func(context.Context))) {
+func (p *pipeLine) schedule(fn func(h Handle, ctx interface{}), ctx interface{}) {
 	index := 0
-	var next func(context.Context)
-	next = func(ctx context.Context) {
+	var next func()
+	next = func() {
 		if index < len(p.handles) {
 			index++
-			fn(p.handles[index-1], ctx, next)
+			fn(p.handles[index-1], ctx)
 		}
 	}
-	next(p.ctx)
+	if v, ok := ctx.(canNext); ok {
+		v.setNext(next)
+	}
+	next()
 	return
 }

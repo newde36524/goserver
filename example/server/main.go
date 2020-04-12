@@ -55,7 +55,6 @@ func main() {
 	server.UsePipe().
 		// Regist(new(customer.LogHandle)).
 		Regist(new(customer.RootHandle))
-	// Regist(customer.NewTraceHandle())
 	server.UseDebug()
 	server.Binding(address)
 	logs.Infof("服务器开始监听...  监听地址:%s", address)

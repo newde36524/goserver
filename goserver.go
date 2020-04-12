@@ -30,6 +30,7 @@ func New(network string, modOption ModOption) (srv *Server, err error) {
 	srv = &Server{
 		network:   network,
 		modOption: modOption,
+		pipe:      &pipeLine{},
 	}
 	srv.ctx, srv.cancle = context.WithCancel(context.Background())
 	return
@@ -40,9 +41,9 @@ func (s *Server) UsePipe(p ...Pipe) Pipe {
 	if len(p) != 0 {
 		s.pipe = p[0]
 	}
-	if s.pipe == nil {
-		s.pipe = newPipe(s.ctx)
-	}
+	// if s.pipe == nil {
+	// 	s.pipe = newPipe(s.ctx)
+	// }
 	return s.pipe
 }
 

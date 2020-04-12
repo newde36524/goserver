@@ -3,7 +3,6 @@
 package goserver
 
 import (
-	"context"
 	"fmt"
 	"time"
 )
@@ -11,7 +10,7 @@ import (
 //Run start run server and receive and handle and send packet
 func (c *Conn) Run() {
 	c.safeFn(func() {
-		c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnConnection(ctx, c, next) })
+		c.pipe.schedule(func(h Handle, ctx interface{}) { h.OnConnection(ctx.(ConnectionContext)) }, newConnectionContext(c))
 		c.recv(1)
 	})
 }
@@ -23,8 +22,8 @@ func (c *Conn) readPacket(size int) <-chan Packet {
 		defer close(result)
 		for {
 			var p Packet
-			c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) {
-				temp := h.ReadPacket(ctx, c, next)
+			c.pipe.schedule(func(h Handle, ctx interface{}) {
+				temp := h.ReadPacket(ctx.(ReadContext))
 				//防止内部调用next()方法重复覆盖p的值
 				//当前机制保证在管道处理流程中,只要有一个handle的ReadPacket方法返回值不为nil时才有效,之后无效
 				if temp != nil && p != nil {
@@ -33,7 +32,7 @@ func (c *Conn) readPacket(size int) <-chan Packet {
 				if temp != nil && p == nil {
 					p = temp
 				}
-			})
+			}, newReadContext(c))
 			select {
 			case <-c.ctx.Done():
 				return
@@ -66,7 +65,7 @@ func (c *Conn) recv(size int) {
 			case <-c.ctx.Done():
 				return
 			case <-recvTimer.C:
-				c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnRecvTimeOut(ctx, c, next) })
+				c.pipe.schedule(func(h Handle, ctx interface{}) { h.OnRecvTimeOut(ctx.(RecvTimeOutContext)) }, newRecvTimeOutContext(c))
 			case p := <-pch:
 				select {
 				case <-c.ctx.Done():
@@ -81,7 +80,7 @@ func (c *Conn) recv(size int) {
 								close(sign)
 							}
 						}()
-						c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnMessage(ctx, c, p, next) })
+						c.pipe.schedule(func(h Handle, ctx interface{}) { h.OnMessage(ctx.(Context)) }, newContext(c, p))
 						select {
 						case <-c.ctx.Done():
 							return
@@ -92,7 +91,7 @@ func (c *Conn) recv(size int) {
 					select {
 					case <-sign:
 					case <-handTimer.C:
-						c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnHandTimeOut(ctx, c, next) })
+						c.pipe.schedule(func(h Handle, ctx interface{}) { h.OnHandTimeOut(ctx.(Context)) }, newContext(c, p))
 					}
 				}
 			}

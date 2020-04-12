@@ -3,7 +3,6 @@
 package goserver
 
 import (
-	"context"
 	"time"
 )
 
@@ -15,7 +14,7 @@ func (c *Conn) OnWriteable() {
 //OnReadable 服务端建立的连接处理方法
 func (c *Conn) OnReadable() {
 	if p := c.readPacketOne(); p != nil {
-		c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) { h.OnMessage(ctx, c, p, next) })
+		c.pipe.schedule(func(h Handle, ctx interface{}) { h.OnMessage(ctx.(Context)) }, newContext(c, p))
 	}
 }
 
@@ -29,13 +28,13 @@ func (c *Conn) readPacketOne() Packet {
 	var p Packet
 	c.readTime = time.Now()
 	c.safeFn(func() {
-		c.pipe.schedule(func(h Handle, ctx context.Context, next func(context.Context)) {
+		c.pipe.schedule(func(h Handle, ctx interface{}) {
 			if p == nil {
-				p = h.ReadPacket(ctx, c, next)
+				p = h.ReadPacket(ctx.(ReadContext))
 			} else {
 				panicError(errReadPacket.Error())
 			}
-		})
+		}, newReadContext(c))
 	})
 	return p
 }
