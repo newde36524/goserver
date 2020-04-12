@@ -75,7 +75,9 @@ func (e *netPoll) Polling() {
 		}
 	)
 	e.polling(func(fd uint64, event uint32) error {
+		e.mu.Lock()
 		evh := e.evhs[fd]
+		e.mu.Unlock()
 		if evh == nil {
 			logError(fmt.Sprintf("no fd %d \n", fd))
 			return nil
