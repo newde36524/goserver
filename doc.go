@@ -28,9 +28,8 @@
 		goserver.BaseHandle
 	}
 
-	//ReadPacket .
 	func (RootHandle) ReadPacket(ctx goserver.ReadContext) goserver.Packet {
-		defer next(ctx)
+		defer ctx.Next()
 		b := make([]byte, 1024)
 		n, _ := conn.Read(b)
 		p := goserver.P(b[:n])
