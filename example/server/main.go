@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"runtime"
@@ -14,7 +15,10 @@ import (
 	"github.com/issue9/logs"
 )
 
+var port = flag.Int("p", 12336, "The port to listen on for tcp requests.")
+
 func init() {
+	flag.Parse()
 	err := logs.InitFromXMLFile("./logs.xml")
 	if err != nil {
 		fmt.Println(err)
@@ -41,7 +45,7 @@ func init() {
 }
 
 func main() {
-	address := "0.0.0.0:12336"
+	address := fmt.Sprintf("0.0.0.0:%d", *port)
 	server, err := goserver.TCPServer(goserver.ModOption(func(opt *goserver.ConnOption) {
 		opt.SendTimeOut = time.Minute     //发送消息包超时时间
 		opt.RecvTimeOut = 5 * time.Second //接收消息包超时时间

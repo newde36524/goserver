@@ -3,14 +3,21 @@
 
 	import (
 		"context"
+		"flag"
 		"fmt"
 		"time"
 
 		"github.com/newde36524/goserver"
 	)
 
+	var port = flag.Int("port", 12336, "The port to listen on for tcp requests.")
+
+	func init() {
+		flag.Parse()
+	}
+
 	func main() {
-		address := "0.0.0.0:12336"
+		address := fmt.Sprintf("0.0.0.0:%d", *port)
 		server, err := goserver.TCPServer(goserver.ModOption(func(opt *goserver.ConnOption) {
 			opt.SendTimeOut = time.Minute //发送消息包超时时间
 			opt.RecvTimeOut = time.Minute //接收消息包超时时间
