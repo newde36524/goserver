@@ -2,7 +2,6 @@
 	package main
 
 	import (
-		"context"
 		"flag"
 		"fmt"
 		"time"
@@ -38,7 +37,7 @@
 	func (RootHandle) ReadPacket(ctx goserver.ReadContext) goserver.Packet {
 		defer ctx.Next()
 		b := make([]byte, 1024)
-		n, _ := conn.Read(b)
+		n, _ := ctx.Conn().Read(b)
 		p := goserver.P(b[:n])
 		return &p
 	}
@@ -49,7 +48,7 @@
 
 	func (RootHandle) OnMessage(ctx goserver.Context) {
 		defer ctx.Next()
-		conn.Write(p)
+		ctx.Conn().Write(ctx.Packet())
 	}
 
 	func (RootHandle) OnClose(ctx goserver.CloseContext) {
