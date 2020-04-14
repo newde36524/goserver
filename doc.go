@@ -28,6 +28,7 @@
 		server.UsePipe().
 			Regist(new(RootHandle))
 		server.Binding(address)
+		select{}
 	}
 
 	type RootHandle struct {
