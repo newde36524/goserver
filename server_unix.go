@@ -81,11 +81,12 @@ func (s *Server) OnReadable() {
 				logError(string(debug.Stack()))
 			}
 		}()
-		if b := conn.IsRecvTimeOut(); b {
-			select {
-			case <-conn.ctx.Done():
-				remove()
-			default:
+
+		select {
+		case <-conn.ctx.Done():
+			remove()
+		default:
+			if b := conn.IsRecvTimeOut(); b {
 				conn.pipe.schedule(func(h Handle, ctx interface{}) { h.OnRecvTimeOut(ctx.(RecvTimeOutContext)) }, newRecvTimeOutContext(conn))
 			}
 		}

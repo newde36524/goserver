@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/newde36524/goserver"
-	customer "github.com/newde36524/goserver/example/Server/customer"
+	"github.com/newde36524/goserver/example/server/customer"
 
 	"github.com/issue9/logs"
 )
@@ -57,7 +57,7 @@ func main() {
 		logs.Error(err)
 	}
 	server.UsePipe().
-		// Regist(new(customer.LogHandle)).
+		Regist(new(customer.LogHandle)).
 		Regist(new(customer.RootHandle))
 	server.UseDebug()
 	server.Binding(address)

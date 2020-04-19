@@ -17,7 +17,7 @@ type RootHandle struct {
 }
 
 //ReadPacket .
-func (RootHandle) ReadPacket(ctx goserver.ReadContext) goserver.Packet {
+func (*RootHandle) ReadPacket(ctx goserver.ReadContext) goserver.Packet {
 	//todo 定义读取数据帧的规则
 	defer ctx.Next()
 	b := make([]byte, 1024)
@@ -45,45 +45,40 @@ func (RootHandle) ReadPacket(ctx goserver.ReadContext) goserver.Packet {
 }
 
 //OnConnection .
-func (RootHandle) OnConnection(ctx goserver.ConnectionContext) {
+func (*RootHandle) OnConnection(ctx goserver.ConnectionContext) {
 	//todo 连接建立时处理,用于一些建立连接时,需要主动下发数据包的场景,可以在这里开启心跳协程,做登录验证等等
 	defer ctx.Next()
 	logs.Infof("%s: 客户端建立连接", ctx.Conn().RemoteAddr())
 }
 
 //OnMessage .
-func (RootHandle) OnMessage(ctx goserver.Context) {
+func (*RootHandle) OnMessage(ctx goserver.Context) {
 	defer ctx.Next()
-	// logs.Info(ctx.Value("logger"))
 	logs.Infof("%s:获取客户端信息: %s", ctx.Conn().RemoteAddr(), string(ctx.Packet().GetBuffer()))
 	ctx.Conn().Write(ctx.Packet())
-	// time.Sleep(10 * time.Second)
 }
 
 //OnClose .
-func (RootHandle) OnClose(ctx goserver.CloseContext) {
+func (*RootHandle) OnClose(ctx goserver.CloseContext) {
 	defer ctx.Next()
 	logs.Infof("客户端断开连接,连接状态:%s", ctx.State().String())
-	// buf := make([]byte, 9999999)
-	// n := runtime.Stack(buf, true)
-	// logs.Infof("%s", string(buf[:n]))
 }
 
 //OnRecvTimeOut .
-func (RootHandle) OnRecvTimeOut(ctx goserver.RecvTimeOutContext) {
+func (*RootHandle) OnRecvTimeOut(ctx goserver.RecvTimeOutContext) {
 	defer ctx.Next()
 	logs.Infof("%s: 服务器接收消息超时", ctx.Conn().RemoteAddr())
 	ctx.Conn().Close()
 }
 
 //OnHandTimeOut .
-func (RootHandle) OnHandTimeOut(ctx goserver.Context) {
+func (*RootHandle) OnHandTimeOut(ctx goserver.Context) {
 	defer ctx.Next()
 	logs.Infof("%s: 服务器处理消息超时", ctx.Conn().RemoteAddr())
 }
 
 //OnPanic .
-func (RootHandle) OnPanic(ctx goserver.PanicContext) {
+func (*RootHandle) OnPanic(ctx goserver.PanicContext) {
 	defer ctx.Next()
 	logs.Errorf("%s: 服务器发生恐慌,错误信息:%s", ctx.Conn().RemoteAddr(), ctx.Error())
 }

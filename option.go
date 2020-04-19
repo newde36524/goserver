@@ -22,7 +22,7 @@ var (
 type ConnOption struct {
 	RecvTimeOut               time.Duration //接收包消息处理超时时间
 	SendTimeOut               time.Duration //发送数据超时时间
-	HandTimeOut               time.Duration //处理消息超时时间
+	HandTimeOut               time.Duration //处理消息超时时间 只在windows下有效
 	MaxWaitCountByHandTimeOut int           //最大处理消息协程堆积数量 只在windows下有效
 	ParallelSize              int           //多连接触发事件并行处理数量
 	MaxGopollExpire           time.Duration //协程池协程生命周期
