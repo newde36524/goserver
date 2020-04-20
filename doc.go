@@ -46,7 +46,7 @@
 		defer ctx.Next()
 	}
 
-	func (RootHandle) OnMessage(ctx goserver.Context) {
+	func (RootHandle) OnMessage(ctx goserver.MessageContext) {
 		defer ctx.Next()
 		ctx.Conn().Write(ctx.Packet())
 	}
