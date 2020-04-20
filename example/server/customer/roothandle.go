@@ -52,7 +52,7 @@ func (*RootHandle) OnConnection(ctx goserver.ConnectionContext) {
 }
 
 //OnMessage .
-func (*RootHandle) OnMessage(ctx goserver.Context) {
+func (*RootHandle) OnMessage(ctx goserver.MessageContext) {
 	defer ctx.Next()
 	logs.Infof("%s:获取客户端信息: %s", ctx.Conn().RemoteAddr(), string(ctx.Packet().GetBuffer()))
 	ctx.Conn().Write(ctx.Packet())

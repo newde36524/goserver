@@ -5,7 +5,7 @@ type (
 	Handle interface {
 		ReadPacket(ctx ReadContext) Packet    //read a packet
 		OnConnection(ctx ConnectionContext)   //handle on client is connect
-		OnMessage(ctx Context)                //handle on read a packet complate
+		OnMessage(ctx MessageContext)         //handle on read a packet complate
 		OnRecvTimeOut(ctx RecvTimeOutContext) //handle on recv data timeout
 		OnClose(ctx CloseContext)             //handle on close connect
 		OnPanic(ctx PanicContext)             //handle on panic
@@ -29,7 +29,7 @@ func (h *BaseHandle) OnConnection(ctx ConnectionContext) {
 }
 
 //OnMessage .
-func (h *BaseHandle) OnMessage(ctx Context) {
+func (h *BaseHandle) OnMessage(ctx MessageContext) {
 	ctx.Next()
 }
 

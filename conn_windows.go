@@ -66,7 +66,7 @@ func (c *Conn) recv(size int) {
 				if p == nil {
 					break
 				}
-				c.pipe.schedule(func(h Handle, ctx interface{}) { h.OnMessage(ctx.(Context)) }, newContext(c, p))
+				c.pipe.schedule(func(h Handle, ctx interface{}) { h.OnMessage(ctx.(MessageContext)) }, newMessageContext(c, p))
 			}
 		}
 	})

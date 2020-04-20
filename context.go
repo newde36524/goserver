@@ -1,12 +1,14 @@
 package goserver
 
-var _ baseContext = (*baseContextImpl)(nil)
-var _ ConnectionContext = (*connectionContextImpl)(nil)
-var _ Context = (*contextImpl)(nil)
-var _ ReadContext = (*readContextImpl)(nil)
-var _ CloseContext = (*closeContextImpl)(nil)
-var _ PanicContext = (*panicContextImpl)(nil)
-var _ RecvTimeOutContext = (*recvTimeOutContextImpl)(nil)
+var (
+	_ baseContext        = (*baseContextImpl)(nil)
+	_ ConnectionContext  = (*connectionContextImpl)(nil)
+	_ MessageContext     = (*messageContextImpl)(nil)
+	_ ReadContext        = (*readContextImpl)(nil)
+	_ CloseContext       = (*closeContextImpl)(nil)
+	_ PanicContext       = (*panicContextImpl)(nil)
+	_ RecvTimeOutContext = (*recvTimeOutContextImpl)(nil)
+)
 
 type (
 	//baseContext .
@@ -22,8 +24,8 @@ type (
 		Conn() *Conn
 	}
 
-	//Context .
-	Context interface {
+	//MessageContext .
+	MessageContext interface {
 		baseContext
 		Conn() *Conn
 		Packet() Packet
@@ -69,8 +71,8 @@ type (
 		baseContextImpl
 	}
 
-	//contextImpl .
-	contextImpl struct {
+	//messageContextImpl .
+	messageContextImpl struct {
 		baseContextImpl
 		packet Packet
 	}
@@ -102,8 +104,8 @@ func newBaseContext(conn *Conn, err error) baseContextImpl {
 	}
 }
 
-func newContext(conn *Conn, p Packet) Context {
-	return &contextImpl{
+func newMessageContext(conn *Conn, p Packet) MessageContext {
+	return &messageContextImpl{
 		baseContextImpl: newBaseContext(conn, nil),
 		packet:          p,
 	}
@@ -175,6 +177,6 @@ func (c *baseContextImpl) Error() error {
 }
 
 //Packet .
-func (c *contextImpl) Packet() Packet {
+func (c *messageContextImpl) Packet() Packet {
 	return c.packet
 }

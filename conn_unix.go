@@ -16,7 +16,7 @@ func (c *Conn) OnReadable() {
 	c.safeFn(func() {
 		if p := c.readPacketOne(); p != nil {
 			c.state.RecvPacketCount++
-			c.pipe.schedule(func(h Handle, ctx interface{}) { h.OnMessage(ctx.(Context)) }, newContext(c, p))
+			c.pipe.schedule(func(h Handle, ctx interface{}) { h.OnMessage(ctx.(MessageContext)) }, newMessageContext(c, p))
 		}
 	})
 }
