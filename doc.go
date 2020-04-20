@@ -20,7 +20,6 @@
 		server, err := goserver.TCPServer(goserver.ModOption(func(opt *goserver.ConnOption) {
 			opt.SendTimeOut = time.Minute //发送消息包超时时间
 			opt.RecvTimeOut = time.Minute //接收消息包超时时间
-			opt.HandTimeOut = time.Minute //处理消息包超时时间
 		}))
 		if err != nil {
 			fmt.Println(err)
