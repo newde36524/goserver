@@ -7,7 +7,6 @@ type (
 		OnConnection(ctx ConnectionContext)   //handle on client is connect
 		OnMessage(ctx Context)                //handle on read a packet complate
 		OnRecvTimeOut(ctx RecvTimeOutContext) //handle on recv data timeout
-		OnHandTimeOut(ctx Context)            //handle on handle data timeout,windows only
 		OnClose(ctx CloseContext)             //handle on close connect
 		OnPanic(ctx PanicContext)             //handle on panic
 	}
@@ -36,11 +35,6 @@ func (h *BaseHandle) OnMessage(ctx Context) {
 
 //OnRecvTimeOut .
 func (h *BaseHandle) OnRecvTimeOut(ctx RecvTimeOutContext) {
-	ctx.Next()
-}
-
-//OnHandTimeOut .
-func (h *BaseHandle) OnHandTimeOut(ctx Context) {
 	ctx.Next()
 }
 

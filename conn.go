@@ -36,9 +36,7 @@ func NewConn(ctx context.Context, rwc net.Conn, opt ConnOption) *Conn {
 }
 
 func (c *Conn) valid() {
-	if c.option.MaxWaitCountByHandTimeOut <= 0 {
-		panicError(errMaxWaitCountByHandTimeOut.Error())
-	}
+
 }
 
 //UseDebug open inner debug log

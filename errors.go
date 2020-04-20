@@ -9,12 +9,14 @@ var (
 	errRecvTimeOutNotSet = errors.New("recvTimeOut option not set")
 	//errSendTimeOutNotSet .
 	errSendTimeOutNotSet = errors.New("sendTimeOut option not set")
-	//errHandTimeOutOutNotSet .
-	errHandTimeOutOutNotSet = errors.New("handTimeOut option not set")
-	//errMaxWaitCountByHandTimeOut .
-	errMaxWaitCountByHandTimeOut = errors.New("the maxWaitCountByHandTimeOut value must be greater than or equal to 1")
 	//errParallelSize .
 	errParallelSize = errors.New("the parallelSize value must be greater than or equal to 1")
 	//errReadPacket .
 	errReadPacket = errors.New("read the first of packet from handle pipe only")
+	//ErrRecvTimeOutNotSet .
+	ErrRecvTimeOutNotSet = errors.New("recvTimeOut option not set")
+	//ErrSendTimeOutNotSet .
+	ErrSendTimeOutNotSet = errors.New("sendTimeOut option not set")
+	//ErrParallelSize .
+	ErrParallelSize = errors.New("the parallelSize value must be greater than or equal to 1")
 )

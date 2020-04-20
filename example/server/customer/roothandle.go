@@ -71,12 +71,6 @@ func (*RootHandle) OnRecvTimeOut(ctx goserver.RecvTimeOutContext) {
 	ctx.Conn().Close()
 }
 
-//OnHandTimeOut .
-func (*RootHandle) OnHandTimeOut(ctx goserver.Context) {
-	defer ctx.Next()
-	logs.Infof("%s: 服务器处理消息超时", ctx.Conn().RemoteAddr())
-}
-
 //OnPanic .
 func (*RootHandle) OnPanic(ctx goserver.PanicContext) {
 	defer ctx.Next()
