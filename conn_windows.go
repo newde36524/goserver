@@ -4,6 +4,7 @@ package goserver
 
 import (
 	"fmt"
+	"net"
 	"time"
 )
 
@@ -70,4 +71,13 @@ func (c *Conn) recv(size int) {
 			}
 		}
 	})
+}
+
+//SetNoDelay .
+func (c *Conn) SetNoDelay(b bool) {
+	switch v := c.rwc.(type) {
+	case *net.TCPConn:
+		v.SetNoDelay(b)
+	default:
+	}
 }

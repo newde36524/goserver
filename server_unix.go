@@ -25,6 +25,7 @@ type Server struct {
 	np           *netPoll        //.
 	ctx          context.Context //.
 	cancle       func()          //.
+	isNoDelay    bool
 }
 
 //Binding start server
@@ -70,6 +71,7 @@ func (s *Server) OnReadable() {
 	conn := NewConn(s.ctx, rwc, *s.opt)
 	conn.UseDebug(s.isDebug)
 	conn.UsePipe(s.pipe)
+	conn.SetNoDelay(s.isNoDelay)
 	conn.pipe.schedule(func(h Handle, ctx interface{}) { h.OnConnection(ctx.(ConnectionContext)) }, newConnectionContext(conn))
 	if err := s.np.Regist(connFd, conn); err != nil {
 		logError(err.Error())

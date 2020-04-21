@@ -3,6 +3,8 @@
 package goserver
 
 import (
+	"net"
+	"syscall"
 	"time"
 )
 
@@ -39,4 +41,21 @@ func (c *Conn) readPacketOne() Packet {
 		}
 	}, newReadContext(c))
 	return result
+}
+
+//SetNoDelay .
+func (c *Conn) SetNoDelay(b bool) {
+	switch v := interface{}(c.rwc).(type) {
+	case *net.TCPConn:
+		if raw, err := v.SyscallConn(); err == nil {
+			raw.Control(func(fd uintptr) {
+				if b {
+					syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, syscall.TCP_NODELAY, 1)
+				} else {
+					syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, syscall.TCP_NODELAY, 0)
+				}
+			})
+		}
+	default:
+	}
 }

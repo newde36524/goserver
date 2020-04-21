@@ -31,6 +31,7 @@ func New(network string, modOption ModOption) (srv *Server, err error) {
 		network:   network,
 		modOption: modOption,
 		pipe:      &pipeLine{},
+		isNoDelay: true,
 	}
 	srv.ctx, srv.cancle = context.WithCancel(context.Background())
 	return
@@ -47,6 +48,11 @@ func (s *Server) UsePipe(p ...Pipe) Pipe {
 //UseDebug 开启debug日志
 func (s *Server) UseDebug() {
 	s.isDebug = true
+}
+
+//UseDebug 开启debug日志
+func (s *Server) SetNoDelay(b bool) {
+	s.isNoDelay = b
 }
 
 func netConnToConnFD(conn net.Conn) (connFD uint64, err error) {

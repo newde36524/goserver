@@ -19,6 +19,7 @@ type Server struct {
 	ctx       context.Context //.
 	listener  net.Listener    //.
 	cancle    func()          //.
+	isNoDelay bool
 	// np        *netPoll
 }
 
@@ -59,6 +60,7 @@ func (s *Server) handleConnection(rwc net.Conn) {
 	conn := NewConn(s.ctx, rwc, *s.opt)
 	conn.UsePipe(s.pipe)
 	conn.UseDebug(s.isDebug)
+	conn.SetNoDelay(s.isNoDelay)
 	conn.Run()
 }
 
