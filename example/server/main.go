@@ -9,10 +9,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/newde36524/goserver"
-	"github.com/newde36524/goserver/example/server/customer"
+	"server/customer"
 
 	"github.com/issue9/logs"
+	"github.com/newde36524/goserver"
 )
 
 var port = flag.Int("p", 12336, "The port to listen on for tcp requests.")
