@@ -6,8 +6,9 @@ import (
 	"runtime"
 	"time"
 
+	"httpserver/handles"
+
 	"github.com/newde36524/goserver"
-	"github.com/newde36524/goserver/example/httpserver/handles"
 
 	"github.com/issue9/logs"
 )
