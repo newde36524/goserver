@@ -1,0 +1,6 @@
+github.com/issue9/assert v1.0.0/go.mod h1:KLwR3U/5rbCxqwAnV3aCr+dz07aoIyIfk2lefIVr2BA=
+github.com/issue9/logs v1.0.0 h1:UHJ/3D3krhlpTIqOE7UCkP6AKPbkdF7zdfwM18AaPTU=
+github.com/issue9/logs v1.0.0/go.mod h1:SklChUSYLlFY2a5v4bu0CM+kvJswuqR6QaWRH85DFNQ=
+github.com/issue9/term v1.0.0 h1:Gz7VoKwJJEC3ljAmCk82YyEia8prkXxdrzvkLujYamE=
+github.com/issue9/term v1.0.0/go.mod h1:NUstPS3ZNncPNM1mI5G6KZTd83SHmqjtciqKZTVFO1s=
+github.com/newde36524/goserver v1.1.1/go.mod h1:8lBjrEH3rK1RE8WJQJpCKDKmBOCkteWLLSAPcJj0e68=
